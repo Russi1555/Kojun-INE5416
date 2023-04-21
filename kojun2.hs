@@ -16,6 +16,17 @@ regioes0::Regiao = [
     [1,1],
     [2,2]]
 
+tabuleiro01::Tabuleiro = [
+  [1,2,0],
+  [0,3,1],
+  [0,2,0]]
+
+
+regioes01::Regiao=[
+  [1,1,1],
+  [2,2,2],
+  [3,3,3]]
+
 tabuleiro1_sol::Tabuleiro
 tabuleiro1_sol=[
      [2,1,3,2,1,2],
@@ -46,12 +57,12 @@ regioes1=[
     [11,11,9,9,10,10]]
 
 checkTabuleiroValido::Tabuleiro->Regiao->Bool
-checkTabuleiroValido tab reg = all (checkRegiaoValida tab reg) [1..maxRegion] && checkZeros tab
+checkTabuleiroValido tab reg = all (checkRegiaoValida tab reg) [1..maxRegion] && checkZeros tab && not(checkAdjacencias tab)
     where
         maxRegion = maximum (map maximum reg)
         checkRegiaoValida tab reg r =
             checkRegiaoSemRepeticao tab reg r &&
-            checkAdjacencias tab reg &&
+            --checkAdjacencias tab reg &&
             checkOrdemVertical tab reg r
 
 checkZeros::Tabuleiro->Bool
@@ -67,7 +78,17 @@ checkRegiaoSemRepeticao::Tabuleiro->Regiao->Int->Bool
 checkRegiaoSemRepeticao tab reg r = sem_reps $ valoresRegiao tab reg r--all (sem_reps . filter (/=0))[(valoresRegiao tab reg r)]
     where
         sem_reps x = length x == length (nub x)    
-        
+
+checkAdjacencias :: Eq a => [[a]] -> Bool
+checkAdjacencias [] = False
+checkAdjacencias [x] = False
+checkAdjacencias (x:y:xs) = checkAdjacencias' x y || checkAdjacencias (y:xs)
+  where
+    checkAdjacencias' [] [] = False
+    checkAdjacencias' (a:as) (b:bs) = a == b || checkAdjacencias' as bs
+    checkAdjacencias' _ _ = False
+
+{-      
 checkAdjacencias :: Tabuleiro -> Regiao -> Bool
 checkAdjacencias tab reg = all (all distinct) [regions]
   where
@@ -78,6 +99,7 @@ checkAdjacencias tab reg = all (all distinct) [regions]
     maxRegion = maximum (map maximum reg)
     n = length tab
 
+-}
 checkOrdemVertical :: Tabuleiro -> Regiao -> Int -> Bool
 checkOrdemVertical tab reg r = all (checkRegionVerticalOrder tab) [verticalCoords]
   where
@@ -134,6 +156,5 @@ main = do
   let x = getValoresPossiveis tabuleiro0 regioes0
   print x
   --print $ findEmptyCells tabuleiro1
-  print $ resolveTabuleiro tabuleiro0 regioes0
-
-  print $ checkTabuleiroValido [[1,2],[1,0]] regioes0
+  print $ resolveTabuleiro tabuleiro01 regioes01
+  print $ checkTabuleiroValido [[1,2],[1,2]] regioes0
