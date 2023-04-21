@@ -1,6 +1,5 @@
-import Data.List (nub,transpose,sortBy)
+import Data.List (nub,sortBy,elemIndices,transpose)
 
-type Coordenada = (Int, Int)
 type Regiao = [[Int]]
 type Tabuleiro = [[Int]]
 
@@ -47,13 +46,16 @@ regioes1=[
     [11,11,9,9,10,10]]
 
 checkTabuleiroValido::Tabuleiro->Regiao->Bool
-checkTabuleiroValido tab reg = all (checkRegiaoValida tab reg) [1..maxRegion]
+checkTabuleiroValido tab reg = all (checkRegiaoValida tab reg) [1..maxRegion] && checkZeros tab
     where
         maxRegion = maximum (map maximum reg)
         checkRegiaoValida tab reg r =
             checkRegiaoSemRepeticao tab reg r &&
             checkAdjacencias tab reg &&
             checkOrdemVertical tab reg r
+
+checkZeros::Tabuleiro->Bool
+checkZeros tab = not(any (0 `elem`) tab)
 
 valoresRegiao :: Tabuleiro -> Regiao -> Int -> [Int]
 valoresRegiao tab reg r = [tab !! i !! j | (i,j) <- coordsRegiao reg r]
@@ -86,42 +88,52 @@ checkOrdemVertical tab reg r = all (checkRegionVerticalOrder tab) [verticalCoord
         verticalPairs = [((i1, j1), (i2, j2)) | (i1, j1) <- coords, (i2, j2) <- coords, j1 == j2, i1 < i2]
     n = length tab
 
+--DAQUI PRA CIMA TA FUNCIONANDO, SÓ FALTA ESTUDAR E ENTENDER 100%--
+findEmptyCells :: Tabuleiro -> [(Int, Int)]
+findEmptyCells board = [(r, c) | r <- [0..(length board)-1], c <- [0..(length (board !! 0))-1], board !! r !! c == 0]
+
+
 --DAQUI PRA CIMA TUDO FUNCIONA--
-valid :: Tabuleiro -> Coordenada -> Int -> Bool
-valid tab (x,y) n = and [rowOK, colOK, regionOK]
-  where
-    rowOK = n `notElem` tab !! x
-    colOK = n `notElem` [tab !! i !! y | i <- [0..length tab - 1]]
-    regionOK = let (x0, y0) = (x `div` regionSize, y `div` regionSize)
-                   coords = [(i, j) | i <- [x0*regionSize..(x0+1)*regionSize-1], j <- [y0*regionSize..(y0+1)*regionSize-1]]
-               in n `notElem` [tab !! i !! j | (i,j) <- coords]
-    regionSize = round $ sqrt $ fromIntegral $ length tab      
+resolveTabuleiro:: Tabuleiro -> Regiao -> Maybe Tabuleiro
+resolveTabuleiro tab reg
+  | checkTabuleiroValido tab reg= Just tab
+  | otherwise = testarProximosValores (getValoresPossiveis tab reg) tab reg
 
-nextEmpty :: Tabuleiro -> Maybe Coordenada
-nextEmpty tab = case [(i,j) | i <- [0..length tab - 1], j <- [0..length tab - 1], tab !! i !! j == 0] of
-                  [] -> Nothing
-                  (c:_) -> Just c
+getValoresPossiveis::Tabuleiro->Regiao->[(Int,Int,Int)]
+getValoresPossiveis tab reg = 
+  [(linha,coluna,n)| linha <-[0..length tab -1], coluna <-[0..length tab -1], isBlank tab linha coluna, n <-[1..length tab]]
 
-solveKojun :: Tabuleiro -> Regiao -> Maybe Tabuleiro
-solveKojun tab reg
-  | not (checkTabuleiroValido tab reg) = Nothing
-  | null emptyCells = Just tab
-  | otherwise = head $ dropWhile isNothing [tryValues (i,j) tab reg | (i,j) <- emptyCells]
-  where
-    emptyCells = [(i,j) | i <- [0..n-1], j <- [0..n-1], tab !! i !! j == 0]
-    tryValues (i,j) tab reg = case valoresPossiveis of
-                                [] -> Nothing
-                                xs -> head $ dropWhile isNothing $ map (\v -> solveKojun (updateTabuleiro (i,j) v tab) reg) xs
-      where
-        updateTabuleiro (i,j) v tab = take i tab ++ [take j (tab !! i) ++ [v] ++ drop (j+1) (tab !! i)] ++ drop (i+1) tab
-        valoresPossiveis = [x | x <- [1..n], valida (i,j) x tab reg]
-        valida (i,j) x tab reg = notElem x (valoresRegiao tab reg (reg !! i !! j)) && 
-                                 notElem x (valoresLinha i tab) &&
-                                 notElem x (valoresColuna j tab)
-        valoresLinha i tab = filter (/=0) (tab !! i)
-        valoresColuna j tab = filter (/=0) (map (!!j) tab)
-        n = length tab
+testarProximosValores::[(Int, Int, Int)]-> Tabuleiro ->Regiao -> Maybe Tabuleiro
+testarProximosValores [] tab _ = Nothing
+testarProximosValores ((linha,coluna, n):resto) tab reg = 
+  case resolveTabuleiro tabAtualizado reg of
+    Just tab -> Just tab
+    Nothing-> testarProximosValores resto tab reg
+  where tabAtualizado = atualizaTabuleiro tab (linha,coluna, n)
+
+atualizaTabuleiro :: Tabuleiro -> (Int, Int, Int) -> Tabuleiro
+atualizaTabuleiro board (row, col, val) = 
+  let (xs, ys) = splitAt row board
+      row' = atualizaLinha (head ys) col val
+  in xs ++ [row'] ++ tail ys
+
+atualizaLinha :: [Int] -> Int -> Int -> [Int]
+atualizaLinha row col val =
+  let (xs, ys) = splitAt col row
+  in xs ++ [val] ++ tail ys
+
+isBlank :: Tabuleiro -> Int -> Int -> Bool
+isBlank board row col = board !! row !! col == 0
+
+--ANOTAÇÕES:: APARENTEMENTE O BACKTRACKING ESTÁ FUNCIONANDO, FALTA ARRUMAR O GETVALORESPOSSIVEIS SÓ
 
 main :: IO ()
 main = do
-    print $ solve tabuleiro1 regioes1
+  print "AAA"
+  print tabuleiro0
+  let x = getValoresPossiveis tabuleiro0 regioes0
+  print x
+  --print $ findEmptyCells tabuleiro1
+  print $ resolveTabuleiro tabuleiro0 regioes0
+
+  print $ checkTabuleiroValido [[1,2],[1,0]] regioes0
