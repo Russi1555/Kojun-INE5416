@@ -1,6 +1,8 @@
-import Data.List (nub,sortBy,elemIndices,transpose,intersect)
+import Data.List (nub,sortBy,elemIndices,transpose,intersect,findIndex)
 import Data.List ((\\))
 import Data.Maybe (fromJust)
+import Data.ByteString (count)
+import Control.Monad (when)
 
 type Regiao = [[Int]]
 type Tabuleiro = [[Int]]
@@ -132,21 +134,79 @@ getAdjacentCells matrix (row, col) =
 
 restricaoPossibilidades::Tabuleiro->Regiao->(Int,Int)-> [Int] --ESSA BOSTA NÃO FUNCIONA DIREITO. OLHA BEM.
 restricaoPossibilidades tab reg (x,y)= do
-    let possibilidades_basicas = [1..getSize reg (x,y)] --Possibilidades basicas: Qualquer numero entre 1 e (tamanho da regiao)
+    let possibilidades_basicas = [1..getRegiaoSize reg (x,y)] --Possibilidades basicas: Qualquer numero entre 1 e (tamanho da regiao)
     let possibilidades_filtradas1 =possibilidades_basicas \\ valoresRegiao tab reg (reg!!x!!y) --Remove itens da lista de possibilidades que já estão presentes na regiao
-    let possibilidades_filtradas2  = possibilidades_filtradas1\\ (getAdjacentCells tab (x,y)) --remove itens da lista de possibilidades que já estão presentes em alguma adjacencia
-    if restricaoVerticalCima tab reg (x,y) /= [] then intersect possibilidades_filtradas2 (restricaoVerticalCima tab reg (x,y)) else possibilidades_filtradas2
-    
-restricaoVerticalCima :: Tabuleiro -> Regiao -> (Int, Int) -> [Int] -- NAO FUNCIONA ESSA PORRA. REPENSA
+    let possibilidades_filtradas2  = possibilidades_filtradas1 \\ (getAdjacentCells tab (x,y)) --remove itens da lista de possibilidades que já estão presentes em alguma adjacencia
+    --if restricaoVerticalCima tab reg (x,y) /= [] then  possibilidades_filtradas2 `intersect` (restricaoVerticalCima tab reg (x,y)) else possibilidades_filtradas2
+    --possibilidades_filtradas2
+    let possibilidades_filtradas3 = filtraRestricoesVerticais tab reg (x,y) possibilidades_filtradas2 --`intersect`  (lowestLonelyofRegion tab reg (x,y) possibilidades_filtradas2)
+    filtraSolitarioRegiao tab reg (x,y) possibilidades_filtradas3
+
+restricaoVerticalCima :: Tabuleiro -> Regiao -> (Int, Int) -> [Int] -- FUNCIONA
 restricaoVerticalCima tab reg (x, y)
-    | x == length tab-1 = [] --evita index out of bounds
+    | x == length tab-1 = [] --evita index out of bounds. Itens da ultima linha não tem que se preocupar em ser maiores que o numero abaixo
     | reg!!(x+1)!!y /= id_regiao = [] --nao faz nada se a celula abaixo for de outra regiao
     | otherwise = filter (> valor_celula) [1..getSize reg (x,y)+1] --devolve os valores maiores que o valor da celula acima para serem filtradas depois
   where
     id_regiao = reg!!x!!y
     valor_celula = tab!!(x+1)!!y
-    
 
+restricaoVerticalBaixo:: Tabuleiro -> Regiao -> (Int, Int) -> [Int]
+restricaoVerticalBaixo tab reg (x,y)
+     | x == 0 = [] --evita index out of bounds. Itens da primeira linha não tem que se preocupar com ser menor que a célula acima
+    | reg!!(x-1)!!y /= id_regiao = [] -- se a celula acima não for da mesma regiao, retorna lista vazia
+    | otherwise = filter (<valor_celula)[1..getSize reg (x,y)+1]
+   where
+    id_regiao = reg!!x!!y
+    valor_celula=tab!!(x-1)!!y
+
+filtraRestricoesVerticais:: Tabuleiro->Regiao->(Int,Int)->[Int]->[Int]
+filtraRestricoesVerticais tab reg (x,y) prefiltro = do
+    let verticalUP = restricaoVerticalCima tab reg (x,y)
+    let verticalDOWN = restricaoVerticalBaixo tab reg (x,y)
+    if verticalUP == [] && verticalDOWN == []
+        then prefiltro
+        else
+            if verticalUP /= [] && verticalDOWN == []
+                then prefiltro `intersect` verticalUP
+                else
+                    if verticalUP == [] && verticalDOWN /= []
+                        then prefiltro `intersect` verticalDOWN
+                        else
+                            (prefiltro `intersect`verticalUP ) `intersect` verticalDOWN
+{-
+lowestLonelyOfRegion::Regiao->(Int,Int)->Bool
+lowestLonelyOfRegion reg (x,y)=
+        let val = (reg !! x) !! y
+            line = reg !! x
+        (last (elemIndices val line) == y) && (length (filter (== val) line) == 1) 
+        --    then [minimum prefiltro]
+          --  else prefiltro
+-}
+
+highestLonelyOfRegion :: Regiao -> (Int, Int) -> Bool
+highestLonelyOfRegion reg (x, y) = 
+    let val = reg !! x !! y
+        row = reg !! x
+        lastOccur = findIndex (==val) (reverse row)
+    in case lastOccur of
+        Just j -> j == (length row - 1) && (length (filter (==val) row)) == 1
+        Nothing -> False
+
+lowestLonelyOfRegion :: [[Int]] -> (Int, Int) -> Bool
+lowestLonelyOfRegion matrix (x, y) =
+  let val = matrix !! x !! y
+      row = matrix !! x
+      occurrences = filter (== val) row
+      isUnique = length occurrences == 1
+      closestToBottom = all (\i -> i >= length matrix - x) $ elemIndices val row
+  in isUnique && closestToBottom
+
+filtraSolitarioRegiao::Tabuleiro->Regiao->(Int,Int)->[Int]->[Int]
+filtraSolitarioRegiao tab reg (x,y) prefiltro
+    |lowestLonelyOfRegion reg (x,y) = [minimum prefiltro]
+    |highestLonelyOfRegion reg (x,y) = [maximum prefiltro]
+    |otherwise = prefiltro
 
 
 resolveTabuleiro:: Tabuleiro -> Regiao -> Maybe Tabuleiro
@@ -182,39 +242,56 @@ isBlank board row col = board !! row !! col == 0
 
 --ANOTAÇÕES:: APARENTEMENTE O BACKTRACKING ESTÁ FUNCIONANDO, FALTA ARRUMAR O GETVALORESPOSSIVEIS SÓ
 
-preSolucionador::Tabuleiro->Regiao->Tabuleiro
-preSolucionador tab reg = do
-    let valores_possiveis = restricaoPossibilidades tab reg (0,1)
-    if (length valores_possiveis ) == 1 then atualizaTabuleiro tab (0,1,head valores_possiveis) else tab
     
-preSolucionador1 :: [(Int,Int)] -> Tabuleiro -> Regiao -> Maybe Tabuleiro
-preSolucionador1 [] tab _ = Just tab
-preSolucionador1 ((linha,coluna):resto) tab reg =
+preSolucionador :: [(Int,Int)] -> Tabuleiro -> Regiao ->Maybe Tabuleiro
+preSolucionador [] tab _ = Just tab
+preSolucionador ((linha,coluna):resto) tab reg =
     if tab!!linha!!coluna == 0
         then let valores_possiveis = restricaoPossibilidades tab reg (linha,coluna) \\ [tab!!linha!!coluna]
             in if length valores_possiveis == 1 
-            then preSolucionador1 resto (atualizaTabuleiro tab (linha,coluna,head valores_possiveis)) reg
-            else preSolucionador1 resto tab reg
-        else preSolucionador1 resto tab reg
+            then preSolucionador resto (atualizaTabuleiro tab (linha,coluna,head valores_possiveis)) reg
+            else preSolucionador resto tab reg
+        else preSolucionador resto tab reg
     
+solucionador :: [(Int, Int)] -> Tabuleiro -> Regiao -> Maybe Tabuleiro
+solucionador coords tab reg = 
+    let newTab = preSolucionador coords tab reg
+    in case newTab of
+        Just t -> if t == tab then Just t else solucionador coords t reg
+        Nothing -> Nothing
 
-        
+
+getRegiaoSize :: Eq a => [[a]] -> (Int,Int) ->  Int
+getRegiaoSize reg (x,y) = length $ filter (==(reg!!x!!y)) $ concat reg
+
 main :: IO ()
 main = do
   print "AAA"
   print tabuleiro1
   let x = [(i,j)|i <- [0..length tabuleiro1 -1] , j <- [0..length tabuleiro1 - 1]]
   --print x
-  let y = fromJust $ preSolucionador1 x tabuleiro1 regioes1
-  print y
-  let z = fromJust $ preSolucionador1 x y regioes1
-  print z
-  print $ fromJust $ preSolucionador1 x z regioes1
-  print $ restricaoVerticalCima z regioes1 (1,4)
-  print $ restricaoPossibilidades tabuleiro1 regioes1 (1,4)
+  --let y = fromJust $ preSolucionador x tabuleiro1 regioes1
+  --print y
+  --let z = fromJust $ preSolucionador x y regioes1
+  --print z
+  --print $ fromJust $ preSolucionador x z regioes1
+  --print $ restricaoVerticalCima z regioes1 (1,4)
+  --print $ restricaoPossibilidades z regioes1 (3,3)
+  --print $ getRegiaoSize  regioes1 (3,3)
+  --print $ restricaoVerticalBaixo z regioes1 (3,3)
+  --print $ lowestLonelyofRegion z regioes1 (3,3) [1,2,3,4,5,6]
   --print $ findEmptyCells tabuleiro1
   --print $ getSize regioes1 (0,0)
-  print $ getAdjacentCells tabuleiro1 (0,1)
+ -- print $ getAdjacentCells z (3,3)
   --print $ restricaoPossibilidades tabuleiro1 regioes1 (0,1)
-  --print $ resolveTabuleiro tabuleiro1 regioes1
-  print $ checkTabuleiroValido [[1,2],[1,2]] regioes0
+  --print $ resolveTabuleiro z regioes1
+  --let a = fromJust $ preSolucionador x z regioes1
+  --print a
+  --let b = fromJust $ preSolucionador x a regioes1
+  --print b
+  --let c = fromJust $ preSolucionador x b regioes1
+  --print c
+  --print $ restricaoPossibilidades a regioes1 (3,0)
+  let r = fromJust $ solucionador x tabuleiro1 regioes1
+  print r
+  print $ checkTabuleiroValido r regioes1
