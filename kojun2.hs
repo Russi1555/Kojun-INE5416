@@ -1,4 +1,4 @@
-import Data.List (nub,sortBy,elemIndices,transpose,intersect,findIndex)
+import Data.List (nub,sortBy,elemIndices,transpose,intersect,findIndex,elemIndex)
 import Data.List ((\\))
 import Data.Maybe (fromJust)
 import Data.ByteString (count)
@@ -62,6 +62,32 @@ regioes1=[
     [5,5,5,6,  7,  7],
     [8,8,9,10, 10,10],
     [11,11,9,9,10,10]]
+
+tabuleiro110::Tabuleiro
+tabuleiro110 =
+    [[5,0,2,0,2,0,3,1,3,1],
+                        [0,4,0,1,0,5,0,5,0,4],
+                        [7,5,1,7,0,0,3,1,3,0],
+                        [0,4,0,0,0,0,0,0,0,3],
+                        [2,0,3,4,0,2,0,0,4,0],
+                        [5,0,2,0,6,0,0,0,0,0],
+                        [0,1,3,0,1,0,0,4,0,3],
+                        [6,7,0,3,0,1,4,0,0,1],
+                        [4,0,3,0,4,0,0,0,0,3],
+                        [0,1,0,2,0,6,2,0,2,1]]
+
+regioes110::Regiao
+regioes110=
+                        [[1,2,2,2,3,3,3,3,4,4],
+                        [1,1,1,2,6,6,7,7,4,7],
+                        [5,5,1,6,6,9,8,7,7,7],
+                        [5,5,6,6,10,9,8,8,8,11],
+                        [5,5,5,6,10,10,30,11,11,11],
+                        [12,12,15,15,15,10,22,22,21,21],
+                        [12,12,12,15,15,16,17,18,21,21],
+                        [13,13,12,15,16,16,17,18,20,20],
+                        [13,13,14,14,14,14,17,18,18,19],
+                        [13,13,13,14,14,14,17,17,19,19]]
 
 checkTabuleiroValido::Tabuleiro->Regiao->Bool
 checkTabuleiroValido tab reg = all (checkRegiaoValida tab reg) [1..maxRegion] && checkZeros tab && not(checkAdjacencias tab)
@@ -142,6 +168,7 @@ restricaoPossibilidades tab reg (x,y)= do
     let possibilidades_filtradas3 = filtraRestricoesVerticais tab reg (x,y) possibilidades_filtradas2 --`intersect`  (lowestLonelyofRegion tab reg (x,y) possibilidades_filtradas2)
     filtraSolitarioRegiao tab reg (x,y) possibilidades_filtradas3
 
+
 restricaoVerticalCima :: Tabuleiro -> Regiao -> (Int, Int) -> [Int] -- FUNCIONA
 restricaoVerticalCima tab reg (x, y)
     | x == length tab-1 = [] --evita index out of bounds. Itens da ultima linha não tem que se preocupar em ser maiores que o numero abaixo
@@ -187,25 +214,26 @@ lowestLonelyOfRegion reg (x,y)=
 highestLonelyOfRegion :: Regiao -> (Int, Int) -> Bool
 highestLonelyOfRegion reg (x, y) = 
     let val = reg !! x !! y
-        row = reg !! x
-        lastOccur = findIndex (==val) (reverse row)
-    in case lastOccur of
-        Just j -> j == (length row - 1) && (length (filter (==val) row)) == 1
-        Nothing -> False
+        occurrences = filter (== val) (concat reg)
+        isUnique = length occurrences == 1
+        lastOccurrence = length (elemIndices val (concat reg)) == 1
+  in isUnique && lastOccurrence
 
 lowestLonelyOfRegion :: [[Int]] -> (Int, Int) -> Bool
-lowestLonelyOfRegion matrix (x, y) =
+lowestLonelyOfRegion matrix (x, y) = --tem problema aqui. Não ta respeitando alguma condição. AINDA TEM PROBLEMA NESSA BOSTA AQUI. RESOLVE O 10X10 NÃO O 6X6
   let val = matrix !! x !! y
       row = matrix !! x
-      occurrences = filter (== val) row
+      occurrences = filter (== val) (concat matrix)
       isUnique = length occurrences == 1
-      closestToBottom = all (\i -> i >= length matrix - x) $ elemIndices val row
-  in isUnique && closestToBottom
+      isLast = elemIndex val (reverse (concat matrix)) == Just ((length matrix - x - 1) * length row + y)
+      uniqueInRow = length (filter (== val) row) == 1
+    in isLast && uniqueInRow
+
 
 filtraSolitarioRegiao::Tabuleiro->Regiao->(Int,Int)->[Int]->[Int]
 filtraSolitarioRegiao tab reg (x,y) prefiltro
-    |lowestLonelyOfRegion reg (x,y) = [minimum prefiltro]
     |highestLonelyOfRegion reg (x,y) = [maximum prefiltro]
+    |lowestLonelyOfRegion reg (x,y) = [minimum prefiltro]
     |otherwise = prefiltro
 
 
@@ -267,8 +295,8 @@ getRegiaoSize reg (x,y) = length $ filter (==(reg!!x!!y)) $ concat reg
 main :: IO ()
 main = do
   print "AAA"
-  print tabuleiro1
-  let x = [(i,j)|i <- [0..length tabuleiro1 -1] , j <- [0..length tabuleiro1 - 1]]
+  print tabuleiro110
+  let x = [(i,j)|i <- [0..length tabuleiro110 -1] , j <- [0..length tabuleiro110 - 1]]
   --print x
   --let y = fromJust $ preSolucionador x tabuleiro1 regioes1
   --print y
@@ -292,6 +320,13 @@ main = do
   --let c = fromJust $ preSolucionador x b regioes1
   --print c
   --print $ restricaoPossibilidades a regioes1 (3,0)
-  let r = fromJust $ solucionador x tabuleiro1 regioes1
+  let r = fromJust $ solucionador x tabuleiro110 regioes110
+  print $ restricaoPossibilidades tabuleiro110 regioes110 (6,5)
+  print $ highestLonelyOfRegion regioes110 (6,5)
+  print $ getSize regioes110 (7,4)
+  print $ checkTabuleiroValido r regioes110
   print r
-  print $ checkTabuleiroValido r regioes1
+  let r2 = fromJust $ resolveTabuleiro r regioes110
+  print r2
+  print $ checkTabuleiroValido r2 regioes110
+
