@@ -1,4 +1,4 @@
-import Data.List (nub,sortBy,elemIndices,transpose,intersect,findIndex,elemIndex)
+import Data.List (find,nub,sortBy,elemIndices,transpose,intersect,findIndex)
 import Data.List ((\\))
 import Data.Maybe (fromJust)
 import Data.ByteString (count)
@@ -9,6 +9,7 @@ type Tabuleiro = [[Int]]
 
 {-
 TABULEIRO1 E REGIOES1 = https://www.janko.at/Raetsel/Kojun/001.a.htm
+TABULEIRO10 E REGIOES10 = https://www.janko.at/Raetsel/Kojun/010.a.htm
 -}
 
 tabuleiro0::Tabuleiro
@@ -63,8 +64,8 @@ regioes1=[
     [8,8,9,10, 10,10],
     [11,11,9,9,10,10]]
 
-tabuleiro110::Tabuleiro
-tabuleiro110 =
+tabuleiro10::Tabuleiro
+tabuleiro10 =
     [[5,0,2,0,2,0,3,1,3,1],
                         [0,4,0,1,0,5,0,5,0,4],
                         [7,5,1,7,0,0,3,1,3,0],
@@ -76,8 +77,8 @@ tabuleiro110 =
                         [4,0,3,0,4,0,0,0,0,3],
                         [0,1,0,2,0,6,2,0,2,1]]
 
-regioes110::Regiao
-regioes110=
+regioes10::Regiao
+regioes10=
                         [[1,2,2,2,3,3,3,3,4,4],
                         [1,1,1,2,6,6,7,7,4,7],
                         [5,5,1,6,6,9,8,7,7,7],
@@ -89,47 +90,7 @@ regioes110=
                         [13,13,14,14,14,14,17,18,18,19],
                         [13,13,13,14,14,14,17,17,19,19]]
 
-checkTabuleiroValido::Tabuleiro->Regiao->Bool
-checkTabuleiroValido tab reg = all (checkRegiaoValida tab reg) [1..maxRegion] && checkZeros tab && not(checkAdjacencias tab)
-    where
-        maxRegion = maximum (map maximum reg)
-        checkRegiaoValida tab reg r =
-            checkRegiaoSemRepeticao tab reg r &&
-            --checkAdjacencias tab reg &&
-            checkOrdemVertical tab reg r
 
-checkZeros::Tabuleiro->Bool
-checkZeros tab = not(any (0 `elem`) tab)
-
-valoresRegiao :: Tabuleiro -> Regiao -> Int -> [Int]
-valoresRegiao tab reg r = [tab !! i !! j | (i,j) <- coordsRegiao reg r]
-    where
-        coordsRegiao reg r = [(i,j) | i <- [0..n-1], j <- [0..n-1], reg !! i !! j == r]
-        n = length tab
-
-checkRegiaoSemRepeticao::Tabuleiro->Regiao->Int->Bool
-checkRegiaoSemRepeticao tab reg r = sem_reps $ valoresRegiao tab reg r--all (sem_reps . filter (/=0))[(valoresRegiao tab reg r)]
-    where
-        sem_reps x = length x == length (nub x)    
-
-checkAdjacencias :: Eq a => [[a]] -> Bool
-checkAdjacencias [] = False
-checkAdjacencias [x] = False
-checkAdjacencias (x:y:xs) = checkAdjacencias' x y || checkAdjacencias (y:xs)
-  where
-    checkAdjacencias' [] [] = False
-    checkAdjacencias' (a:as) (b:bs) = a == b || checkAdjacencias' as bs
-    checkAdjacencias' _ _ = False
-
-checkOrdemVertical :: Tabuleiro -> Regiao -> Int -> Bool
-checkOrdemVertical tab reg r = all (checkRegionVerticalOrder tab) [verticalCoords]
-  where
-    coords = [(i, j) | i <- [0..n-1], j <- [0..n-1], reg !! i !! j == r]
-    verticalCoords = sortBy (\(i1, j1) (i2, j2) -> compare (tab !! i1 !! j1) (tab !! i2 !! j2)) coords
-    checkRegionVerticalOrder tab coords = all (\((i1, j1), (i2, j2)) -> i1 < i2) verticalPairs
-      where
-        verticalPairs = [((i1, j1), (i2, j2)) | (i1, j1) <- coords, (i2, j2) <- coords, j1 == j2, i1 < i2]
-    n = length tab
 
 --DAQUI PRA CIMA TA FUNCIONANDO, SÓ FALTA ESTUDAR E ENTENDER 100%--
 findEmptyCells :: Tabuleiro -> [(Int, Int)]
@@ -147,6 +108,11 @@ getSize regiao (x,y) = countConnected (x,y) [] 1
                              , countConnected (i,j+1) ((i,j):visited) (count+1)
                              ]
 
+valoresRegiao :: Tabuleiro -> Regiao -> Int -> [Int]
+valoresRegiao tab reg r = [tab !! i !! j | (i,j) <- coordsRegiao reg r]
+    where
+        coordsRegiao reg r = [(i,j) | i <- [0..n-1], j <- [0..n-1], reg !! i !! j == r]
+        n = length tab
 --DAQUI PRA CIMA TUDO FUNCIONA--
 getAdjacentCells :: Tabuleiro -> (Int, Int) -> [Int]
 getAdjacentCells matrix (row, col) =
@@ -166,6 +132,7 @@ restricaoPossibilidades tab reg (x,y)= do
     --if restricaoVerticalCima tab reg (x,y) /= [] then  possibilidades_filtradas2 `intersect` (restricaoVerticalCima tab reg (x,y)) else possibilidades_filtradas2
     --possibilidades_filtradas2
     let possibilidades_filtradas3 = filtraRestricoesVerticais tab reg (x,y) possibilidades_filtradas2 --`intersect`  (lowestLonelyofRegion tab reg (x,y) possibilidades_filtradas2)
+    --possibilidades_filtradas3
     filtraSolitarioRegiao tab reg (x,y) possibilidades_filtradas3
 
 
@@ -201,58 +168,69 @@ filtraRestricoesVerticais tab reg (x,y) prefiltro = do
                         then prefiltro `intersect` verticalDOWN
                         else
                             (prefiltro `intersect`verticalUP ) `intersect` verticalDOWN
-{-
-lowestLonelyOfRegion::Regiao->(Int,Int)->Bool
-lowestLonelyOfRegion reg (x,y)=
-        let val = (reg !! x) !! y
-            line = reg !! x
-        (last (elemIndices val line) == y) && (length (filter (== val) line) == 1) 
-        --    then [minimum prefiltro]
-          --  else prefiltro
--}
+
+valoresPossiveisDaRegiao::Tabuleiro->Regiao->Int->[((Int,Int),[Int])]
+valoresPossiveisDaRegiao tab reg reg_id= do
+  [((i,j),l) | i <-[0.. length tab-1], j <- [0.. length tab-1],isBlank tab i j && (reg!!i!!j) == reg_id, l <- [restricaoPossibilidades tab reg (i,j)]] 
+
+encontrarUnicaPossibilidade::Tabuleiro->[((Int,Int),[Int])]->Tabuleiro
+encontrarUnicaPossibilidade tab [] = tab
+encontrarUnicaPossibilidade tab possibilidades = do 
+  let valor_unico = uniqueNumbers $ concatValues possibilidades
+  let coordendadas_valor_unico = findCoordinate possibilidades $ head valor_unico
+  if valor_unico == []
+    then tab
+    else atualizaTabuleiro tab (fst (coordendadas_valor_unico), snd (coordendadas_valor_unico), head valor_unico)
+
+concatValues :: [((Int,Int), [Int])] -> [Int]
+concatValues xs = concatMap snd xs
+
+
+uniqueNumbers :: [Int] -> [Int]
+uniqueNumbers xs = filter (\x -> length (filter (== x) xs) == 1) xs
+
+findCoordinate :: [((Int,Int), [Int])] -> Int -> (Int, Int)
+findCoordinate coords num =
+  case filter (elem num . snd) coords of
+    [(coord, _)] -> coord
+
+iteraProcurandoPossibilidade::Tabuleiro->Regiao->Int->Tabuleiro
+iteraProcurandoPossibilidade tab _ 0 = tab
+iteraProcurandoPossibilidade tab reg n =
+  iteraProcurandoPossibilidade (encontrarUnicaPossibilidade tab (valoresPossiveisDaRegiao tab reg n)) reg (n-1)
+
+
+
+lowestLonelyOfRegion::Regiao -> (Int,Int) -> Bool
+lowestLonelyOfRegion reg (x,y) = do
+    let regiao_id = (reg!!x)!!y
+    let regiao_id_abaixo = if x == length reg -1 then -1 else (reg!!(x+1)!!y)
+    length (filter (==regiao_id) (reg!!x)) == 1 && regiao_id /= regiao_id_abaixo
+
 
 highestLonelyOfRegion :: Regiao -> (Int, Int) -> Bool
 highestLonelyOfRegion reg (x, y) = 
     let val = reg !! x !! y
-        occurrences = filter (== val) (concat reg)
-        isUnique = length occurrences == 1
-        lastOccurrence = length (elemIndices val (concat reg)) == 1
-  in isUnique && lastOccurrence
-
+        row = reg !! x
+        lastOccur = findIndex (==val) (reverse row)
+    in case lastOccur of
+        Just j -> j == (length row - 1) && (length (filter (==val) row)) == 1
+        Nothing -> False
+{-
 lowestLonelyOfRegion :: [[Int]] -> (Int, Int) -> Bool
-lowestLonelyOfRegion matrix (x, y) = --tem problema aqui. Não ta respeitando alguma condição. AINDA TEM PROBLEMA NESSA BOSTA AQUI. RESOLVE O 10X10 NÃO O 6X6
+lowestLonelyOfRegion matrix (x, y) =
   let val = matrix !! x !! y
       row = matrix !! x
-      occurrences = filter (== val) (concat matrix)
+      occurrences = filter (== val) row
       isUnique = length occurrences == 1
-      isLast = elemIndex val (reverse (concat matrix)) == Just ((length matrix - x - 1) * length row + y)
-      uniqueInRow = length (filter (== val) row) == 1
-    in isLast && uniqueInRow
-
-
+      closestToBottom = all (\i -> i >= length matrix - x) $ elemIndices val row
+  in isUnique && closestToBottom
+-}
 filtraSolitarioRegiao::Tabuleiro->Regiao->(Int,Int)->[Int]->[Int]
 filtraSolitarioRegiao tab reg (x,y) prefiltro
-    |highestLonelyOfRegion reg (x,y) = [maximum prefiltro]
-    |lowestLonelyOfRegion reg (x,y) = [minimum prefiltro]
+    |lowestLonelyOfRegion reg (x,y) && length prefiltro /= 1 = prefiltro \\ [maximum prefiltro]
+    |highestLonelyOfRegion reg (x,y) && length prefiltro /= 1 = prefiltro \\ [minimum prefiltro]
     |otherwise = prefiltro
-
-
-resolveTabuleiro:: Tabuleiro -> Regiao -> Maybe Tabuleiro
-resolveTabuleiro tab reg
-  | checkTabuleiroValido tab reg= Just tab
-  | otherwise = testarProximosValores (getValoresPossiveis tab reg) tab reg
-
-getValoresPossiveis::Tabuleiro->Regiao->[(Int,Int,Int)]
-getValoresPossiveis tab reg = 
-  [(linha,coluna,n)| linha <-[0..length tab -1], coluna <-[0..length tab -1], isBlank tab linha coluna, n <-restricaoPossibilidades tab reg (linha,coluna)]
-
-testarProximosValores::[(Int, Int, Int)]-> Tabuleiro ->Regiao -> Maybe Tabuleiro
-testarProximosValores [] tab _ = Nothing
-testarProximosValores ((linha,coluna, n):resto) tab reg = 
-  case resolveTabuleiro tabAtualizado reg of
-    Just tab -> Just tab
-    Nothing-> testarProximosValores resto tab reg
-  where tabAtualizado = atualizaTabuleiro tab (linha,coluna, n)
 
 atualizaTabuleiro :: Tabuleiro -> (Int, Int, Int) -> Tabuleiro
 atualizaTabuleiro board (row, col, val) = 
@@ -273,14 +251,16 @@ isBlank board row col = board !! row !! col == 0
     
 preSolucionador :: [(Int,Int)] -> Tabuleiro -> Regiao ->Maybe Tabuleiro
 preSolucionador [] tab _ = Just tab
-preSolucionador ((linha,coluna):resto) tab reg =
-    if tab!!linha!!coluna == 0
-        then let valores_possiveis = restricaoPossibilidades tab reg (linha,coluna) \\ [tab!!linha!!coluna]
+preSolucionador ((linha,coluna):resto) tab reg = do
+    let newTab = iteraProcurandoPossibilidade tab reg (reg!!(length reg-1)!!(length reg -1))
+    if newTab!!linha!!coluna == 0
+        then let valores_possiveis = restricaoPossibilidades newTab reg (linha,coluna) \\ [newTab!!linha!!coluna]
             in if length valores_possiveis == 1 
-            then preSolucionador resto (atualizaTabuleiro tab (linha,coluna,head valores_possiveis)) reg
-            else preSolucionador resto tab reg
-        else preSolucionador resto tab reg
+            then preSolucionador resto (atualizaTabuleiro newTab (linha,coluna,head valores_possiveis)) reg
+            else preSolucionador resto newTab reg
+        else preSolucionador resto newTab reg
     
+
 solucionador :: [(Int, Int)] -> Tabuleiro -> Regiao -> Maybe Tabuleiro
 solucionador coords tab reg = 
     let newTab = preSolucionador coords tab reg
@@ -295,8 +275,12 @@ getRegiaoSize reg (x,y) = length $ filter (==(reg!!x!!y)) $ concat reg
 main :: IO ()
 main = do
   print "AAA"
-  print tabuleiro110
-  let x = [(i,j)|i <- [0..length tabuleiro110 -1] , j <- [0..length tabuleiro110 - 1]]
+  let tab = tabuleiro1
+  let reg = regioes1
+  print tab
+
+
+  let x = [(i,j)|i <- [0..length tab -1] , j <- [0..length tab - 1]]
   --print x
   --let y = fromJust $ preSolucionador x tabuleiro1 regioes1
   --print y
@@ -320,13 +304,9 @@ main = do
   --let c = fromJust $ preSolucionador x b regioes1
   --print c
   --print $ restricaoPossibilidades a regioes1 (3,0)
-  let r = fromJust $ solucionador x tabuleiro110 regioes110
-  print $ restricaoPossibilidades tabuleiro110 regioes110 (6,5)
-  print $ highestLonelyOfRegion regioes110 (6,5)
-  print $ getSize regioes110 (7,4)
-  print $ checkTabuleiroValido r regioes110
+  let r = fromJust $ solucionador x tab reg
   print r
-  let r2 = fromJust $ resolveTabuleiro r regioes110
-  print r2
-  print $ checkTabuleiroValido r2 regioes110
-
+  let s = iteraProcurandoPossibilidade r reg (reg!!(length reg-1)!!(length reg -1))
+  print $ restricaoPossibilidades r reg (1,5)
+  print $ lowestLonelyOfRegion regioes10 (6,5)
+  
