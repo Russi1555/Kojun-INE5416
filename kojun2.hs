@@ -80,8 +80,6 @@ regioes10=
                         [13,13,14,14,14,14,17,18,18,19],
                         [13,13,13,14,14,14,17,17,19,19]]
 
-
-
 -- Esta função retorna uma lista com os valores presentes em dada regiao --
 valoresRegiao :: Tabuleiro -> Regiao -> Int -> [Int]
 valoresRegiao tab reg r = [tab !! i !! j | (i,j) <- coordsRegiao reg r]
@@ -248,7 +246,7 @@ getAllPossibilidadesVazios tab reg (coord:resto) lista_r= do
 preSolucionador :: [(Int,Int)] -> Tabuleiro -> Regiao -> Tabuleiro
 preSolucionador [] tab _ = tab
 preSolucionador ((linha,coluna):resto) tab reg = do
-    let newTab = iteraProcurandoPossibilidade tab reg (reg!!(length reg-1)!!(length reg -1))
+    let newTab = iteraProcurandoPossibilidade tab reg (maximum $ concat tab)
     if newTab!!linha!!coluna == 0
         then let valores_possiveis = restricaoPossibilidades newTab reg (linha,coluna) \\ [newTab!!linha!!coluna]
             in if length valores_possiveis == 1 
@@ -278,12 +276,12 @@ printTabuleiro = mapM_ print
 
 main :: IO ()
 main = do
-  let tab = tabuleiro10
-  let reg = regioes10
-  let x = [(i,j)|i <- [0..length tab -1] , j <- [0..length tab - 1]]
-  let r = solucionador x tab reg
+  let tab = tabuleiro1
+  let reg = regioes1
+  let coords = getZeroCoords tab
+  let r = solucionador coords tab reg
   if length (getZeroCoords r) > 0
-    then print "Sem Solucao"
+    then print "Sem solucao"
     else printTabuleiro r
 
   
