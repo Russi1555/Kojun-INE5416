@@ -1,5 +1,4 @@
 import Data.List (nub, intersect, (\\))
-import Data.Maybe (fromJust)
 
 
 type Regiao = [[Int]]
@@ -226,8 +225,8 @@ isBlank board row col = board !! row !! col == 0
 
 --Recursivamente testa chuta valores possíveis, caso seja um valor que não causa que outra celula tenha possibilidades = [], chama o solucionador de novo. 
 --Bom para casos onde uma pequena alteração pode implicar em diversas descobertas para o pre-solucionador
-testaPossibilidades::Tabuleiro->Regiao->(Int,Int)->[Int]->Maybe Tabuleiro
-testaPossibilidades tab _ _ [] = Just tab --Quando a lista de coordenadas com valor 0 esta vazia, retorna o tabuleiro atual
+testaPossibilidades::Tabuleiro->Regiao->(Int,Int)->[Int]->Tabuleiro
+testaPossibilidades tab _ _ [] = tab --Quando a lista de coordenadas com valor 0 esta vazia, retorna o tabuleiro atual
 testaPossibilidades tab reg (x,y) (possibilidade:resto) = do
   let newTab = atualizaTabuleiro tab (x,y,possibilidade) --newTab = tabuleiro atualizado com o chute atual
   let newZeroCoords = getZeroCoords newTab -- nova lista de coordenadas com zero
@@ -246,8 +245,8 @@ getAllPossibilidadesVazios tab reg (coord:resto) lista_r= do
 
 --preSolucionador ≃ solucionador analítico
 --Chama a filtragem das restricoes, procura possibilidades unicas e atualiza o tabuleiro
-preSolucionador :: [(Int,Int)] -> Tabuleiro -> Regiao ->Maybe Tabuleiro
-preSolucionador [] tab _ = Just tab
+preSolucionador :: [(Int,Int)] -> Tabuleiro -> Regiao -> Tabuleiro
+preSolucionador [] tab _ = tab
 preSolucionador ((linha,coluna):resto) tab reg = do
     let newTab = iteraProcurandoPossibilidade tab reg (reg!!(length reg-1)!!(length reg -1))
     if newTab!!linha!!coluna == 0
@@ -259,17 +258,15 @@ preSolucionador ((linha,coluna):resto) tab reg = do
     
 --"loop" principal de solucionar o tabuleiro. Se o preSolucionador retornar o mesmo tabuleiro que lhe foi dado, isso reflete que chegamos ao limite da nossa solução analítica
 --Neste caso, chamamos o testaPossibilidades onde será chutado um valor de possibilidade na primeira célula == 0 e dentro de testaPossibilidades solucionador é chamado de novo. 
-solucionador :: [(Int, Int)] -> Tabuleiro -> Regiao -> Maybe Tabuleiro
-solucionador coords tab reg = 
+solucionador :: [(Int, Int)] -> Tabuleiro -> Regiao -> Tabuleiro
+solucionador coords tab reg = do
     let newTab = preSolucionador coords tab reg
-        newZeroCoords = getZeroCoords $ fromJust newTab
-    in case newTab of
-        Just t -> if t == tab 
-          then if length newZeroCoords /= 0 
-            then testaPossibilidades t reg (head $ getZeroCoords t) $ restricaoPossibilidades t reg (head $ getZeroCoords t) 
-            else Just t
-          else solucionador coords t reg
-        Nothing -> Nothing
+        newZeroCoords = getZeroCoords newTab
+    if newTab == tab 
+      then if length newZeroCoords /= 0 
+            then testaPossibilidades newTab reg (head $ getZeroCoords newTab) $ restricaoPossibilidades newTab reg (head $ getZeroCoords newTab) 
+            else  newTab
+      else solucionador coords newTab reg
 
 --Retorna o tamanho da regiao de dada coordenada
 getRegiaoSize :: Regiao -> (Int,Int) ->  Int
@@ -284,7 +281,7 @@ main = do
   let tab = tabuleiro10
   let reg = regioes10
   let x = [(i,j)|i <- [0..length tab -1] , j <- [0..length tab - 1]]
-  let r = fromJust $ solucionador x tab reg
+  let r = solucionador x tab reg
   if length (getZeroCoords r) > 0
     then print "Sem Solucao"
     else printTabuleiro r
