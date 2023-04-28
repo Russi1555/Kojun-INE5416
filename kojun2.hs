@@ -2,7 +2,8 @@ import Data.List (find,nub,sortBy,elemIndices,transpose,intersect,findIndex)
 import Data.List ((\\))
 import Data.Maybe (fromJust)
 import Data.ByteString (count)
-import Control.Monad (when)
+import Distribution.Compat.CharParsing (tab)
+
 
 type Regiao = [[Int]]
 type Tabuleiro = [[Int]]
@@ -90,23 +91,53 @@ regioes10=
                         [13,13,14,14,14,14,17,18,18,19],
                         [13,13,13,14,14,14,17,17,19,19]]
 
+tabuleiro100::Tabuleiro
+tabuleiro100=
+  [
+  [3, 0, 2, 5, 6, 1, 0, 2, 0, 2, 0, 0, 1, 3, 5, 0, 0], 
+  [1, 0, 0, 0, 4, 0, 4, 0, 0, 0, 6, 3, 2, 0, 0, 1, 0], 
+  [7, 5, 0, 0, 2, 4, 0, 0, 0, 0, 0, 4, 0, 0, 1, 0, 5], 
+  [5, 2, 0, 0, 0, 0, 0, 0, 4, 0, 0, 1, 0, 3, 0, 5, 0], 
+  [0, 6, 2, 0, 0, 0, 7, 0, 0, 0, 3, 0, 5, 6, 0, 0, 3], 
+  [0, 4, 1, 0, 0, 4, 0, 0, 3, 0, 0, 2, 0, 0, 0, 2, 0], 
+  [0, 0, 0, 3, 0, 0, 0, 0, 1, 0, 3, 6, 4, 0, 0, 0, 0], 
+  [1, 0, 0, 0, 0, 0, 0, 5, 0, 4, 0, 5, 0, 0, 2, 6, 0], 
+  [0, 0, 0, 4, 0, 0, 3, 0, 0, 0, 0, 2, 0, 0, 0, 4, 0], 
+  [3, 4, 0, 2, 0, 2, 0, 0, 3, 0, 0, 6, 4, 5, 0, 0, 0], 
+  [0, 1, 0, 1, 0, 0, 3, 7, 5, 0, 0, 2, 3, 0, 2, 6, 0], 
+  [0, 6, 0, 0, 0, 3, 4, 0, 0, 1, 0, 0, 0, 0, 0, 3, 5], 
+  [0, 2, 1, 0, 0, 7, 0, 0, 3, 0, 0, 3, 0, 6, 0, 0, 1], 
+  [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6], 
+  [0, 0, 1, 3, 0, 3, 5, 0, 5, 0, 2, 0, 6, 3, 4, 0, 5], 
+  [3, 0, 0, 0, 6, 0, 7, 4, 0, 5, 0, 0, 4, 0, 0, 0, 0], 
+  [0, 2, 4, 0, 0, 0, 0, 0, 3, 0, 1, 6, 2, 0, 2, 4, 1]]
+
+regioes100::Regiao
+regioes100=
+  [[1, 2, 2, 4, 4, 4, 4, 4, 5, 5, 7, 7, 7, 7, 8, 9, 9], 
+  [1, 1, 3, 4, 13, 13, 4, 63, 5, 6, 11, 8, 8, 8, 8, 9, 9], 
+  [16, 1, 1, 14, 13, 12, 12, 12, 5, 11, 11, 11, 11, 8, 8, 10, 9], 
+  [16, 1, 14, 14, 13, 18, 12, 19, 20, 20, 20, 20, 11, 10, 10, 10, 9], 
+  [16, 17, 14, 15, 18, 18, 18, 19, 20, 27, 20, 21, 21, 21, 10, 10, 9], 
+  [16, 17, 14, 18, 18, 18, 27, 27, 27, 27, 26, 21, 21, 21, 22, 22, 23], 
+  [16, 17, 17, 17, 17, 28, 28, 28, 27, 26, 26, 25, 25, 24, 23, 23, 23], 
+  [16, 16, 31, 17, 30, 29, 28, 36, 36, 36, 26, 25, 25, 39, 39, 39, 40], 
+  [31, 31, 31, 30, 30, 29, 28, 36, 36, 36, 25, 25, 25, 39, 39, 39, 40], 
+  [32, 31, 31, 30, 33, 29, 34, 34, 34, 35, 37, 37, 38, 38, 38, 41, 40], 
+  [32, 32, 32, 30, 33, 29, 29, 29, 29, 37, 37, 37, 38, 46, 38, 38, 40], 
+  [60, 62, 62, 33, 33, 54, 54, 54, 54, 37, 37, 47, 45, 45, 38, 42, 42], 
+  [60, 62, 62, 62, 56, 55, 53, 54, 53, 64, 48, 48, 48, 45, 42, 42, 42], 
+  [60, 61, 61, 62, 56, 55, 53, 53, 53, 64, 48, 49, 48, 45, 44, 43, 43], 
+  [60, 60, 60, 58, 55, 55, 55, 52, 52, 52, 49, 49, 49, 45, 44, 44, 43], 
+  [59, 58, 58, 58, 58, 55, 52, 52, 51, 50, 50, 49, 49, 45, 44, 43, 43], 
+  [59, 59, 58, 57, 57, 55, 52, 52, 50, 50, 50, 50, 50, 45, 44, 43, 43]]
+
 
 
 --DAQUI PRA CIMA TA FUNCIONANDO, SÓ FALTA ESTUDAR E ENTENDER 100%--
 findEmptyCells :: Tabuleiro -> [(Int, Int)]
 findEmptyCells board = [(r, c) | r <- [0..(length board)-1], c <- [0..(length (board !! 0))-1], board !! r !! c == 0]
 
-getSize :: Regiao -> (Int,Int) -> Int
-getSize regiao (x,y) = countConnected (x,y) [] 1
-  where
-    countConnected (i,j) visited count
-      | i < 0 || j < 0 || i >= length regiao || j >= length (head regiao) || elem (i,j) visited = count - 1
-      | regiao !! i !! j /= regiao !! x !! y = count - 1
-      | otherwise = maximum [ countConnected (i-1,j) ((i,j):visited) (count+1)
-                             , countConnected (i+1,j) ((i,j):visited) (count+1)
-                             , countConnected (i,j-1) ((i,j):visited) (count+1)
-                             , countConnected (i,j+1) ((i,j):visited) (count+1)
-                             ]
 
 valoresRegiao :: Tabuleiro -> Regiao -> Int -> [Int]
 valoresRegiao tab reg r = [tab !! i !! j | (i,j) <- coordsRegiao reg r]
@@ -140,7 +171,7 @@ restricaoVerticalCima :: Tabuleiro -> Regiao -> (Int, Int) -> [Int] -- FUNCIONA
 restricaoVerticalCima tab reg (x, y)
     | x == length tab-1 = [] --evita index out of bounds. Itens da ultima linha não tem que se preocupar em ser maiores que o numero abaixo
     | reg!!(x+1)!!y /= id_regiao = [] --nao faz nada se a celula abaixo for de outra regiao
-    | otherwise = filter (> valor_celula) [1..getSize reg (x,y)+1] --devolve os valores maiores que o valor da celula acima para serem filtradas depois
+    | otherwise = filter (> valor_celula) [1..getRegiaoSize reg (x,y)+1] --devolve os valores maiores que o valor da celula acima para serem filtradas depois
   where
     id_regiao = reg!!x!!y
     valor_celula = tab!!(x+1)!!y
@@ -149,7 +180,7 @@ restricaoVerticalBaixo:: Tabuleiro -> Regiao -> (Int, Int) -> [Int]
 restricaoVerticalBaixo tab reg (x,y)
      | x == 0 = [] --evita index out of bounds. Itens da primeira linha não tem que se preocupar com ser menor que a célula acima
     | reg!!(x-1)!!y /= id_regiao = [] -- se a celula acima não for da mesma regiao, retorna lista vazia
-    | otherwise = filter (<valor_celula)[1..getSize reg (x,y)+1]
+    | otherwise = filter (<valor_celula)[1..getRegiaoSize reg (x,y)+1]
    where
     id_regiao = reg!!x!!y
     valor_celula=tab!!(x-1)!!y
@@ -167,7 +198,7 @@ filtraRestricoesVerticais tab reg (x,y) prefiltro = do
                     if verticalUP == [] && verticalDOWN /= []
                         then prefiltro `intersect` verticalDOWN
                         else
-                            (prefiltro `intersect`verticalUP ) `intersect` verticalDOWN
+                            (prefiltro `intersect` verticalUP ) `intersect` verticalDOWN
 
 valoresPossiveisDaRegiao::Tabuleiro->Regiao->Int->[((Int,Int),[Int])]
 valoresPossiveisDaRegiao tab reg reg_id= do
@@ -199,6 +230,39 @@ iteraProcurandoPossibilidade tab _ 0 = tab
 iteraProcurandoPossibilidade tab reg n =
   iteraProcurandoPossibilidade (encontrarUnicaPossibilidade tab (valoresPossiveisDaRegiao tab reg n)) reg (n-1)
 
+procuraTriviais::Tabuleiro->Regiao->[(Int,Int)]->Tabuleiro
+procuraTriviais tab reg [] = tab
+procuraTriviais tab reg ((linha,coluna):resto) = do
+  let correcao1 = procuraSanduiche tab reg (linha,coluna)
+  let correcao2 = procuraColunaTrivial tab reg (linha,coluna)
+  procuraTriviais correcao1 reg resto
+  
+
+procuraSanduiche::Tabuleiro->Regiao->(Int,Int)->Tabuleiro
+procuraSanduiche tab reg (x,y) = do
+  let regiao_id = (reg!!x)!!y
+  let regiao_id_abaixo = if x == length reg -1 then -99 else (reg!!(x+1)!!y)
+  let regiao_id_acima = if x == 0 then -99 else (reg!!(x-1)!!y)
+  let verticalUP = restricaoVerticalCima tab reg (x,y)
+  let verticalDOWN = restricaoVerticalBaixo tab reg (x,y)
+  if regiao_id_acima == regiao_id_abaixo && regiao_id_abaixo == regiao_id && tab!!(x-1)!!y - tab!!(x+1)!!y == 2
+    then atualizaTabuleiro tab (x,y,(head $ verticalUP `intersect` verticalDOWN))
+    else tab
+
+procuraColunaTrivial::Tabuleiro->Regiao->(Int,Int)->Tabuleiro
+procuraColunaTrivial tab reg (x,y) = do
+  let regiao_id = (reg!!x)!!y
+  let regiao_id_abaixo = if x == length reg -1 then -1 else (reg!!(x+1)!!y)
+  if (length (filter (==0) (valoresRegiao tab reg regiao_id))) == 2 && regiao_id==regiao_id_abaixo && tab!!(x+1)!!y == 0 then
+    atualizaTabuleiro tab (x,y,maximum ([1..(getRegiaoSize reg (x,y))] \\ valoresRegiao tab reg regiao_id))
+    --atualizaTabuleiro tab (x,y, ([1..getRegiaoSize reg -1] \\ valoresRegiao tab reg regiao_id))
+    else atualizaTabuleiro tab (x,y,9999999999)
+
+
+getZeroCoords :: [[Int]] -> [(Int, Int)]
+getZeroCoords matrix = [(row, col) | (row, rowVals) <- zip [0..] matrix,
+                                     (col, val) <- zip [0..] rowVals,
+                                     val == 0]
 
 
 lowestLonelyOfRegion::Regiao -> (Int,Int) -> Bool
@@ -209,13 +273,10 @@ lowestLonelyOfRegion reg (x,y) = do
 
 
 highestLonelyOfRegion :: Regiao -> (Int, Int) -> Bool
-highestLonelyOfRegion reg (x, y) = 
-    let val = reg !! x !! y
-        row = reg !! x
-        lastOccur = findIndex (==val) (reverse row)
-    in case lastOccur of
-        Just j -> j == (length row - 1) && (length (filter (==val) row)) == 1
-        Nothing -> False
+highestLonelyOfRegion reg (x, y) = do
+    let regiao_id = (reg!!x)!!y
+    let regiao_id_acima = if x == 0 then -1 else (reg!!(x-1)!!y)
+    length (filter (==regiao_id) (reg!!x)) == 1 && regiao_id /= regiao_id_acima
 {-
 lowestLonelyOfRegion :: [[Int]] -> (Int, Int) -> Bool
 lowestLonelyOfRegion matrix (x, y) =
@@ -229,7 +290,7 @@ lowestLonelyOfRegion matrix (x, y) =
 filtraSolitarioRegiao::Tabuleiro->Regiao->(Int,Int)->[Int]->[Int]
 filtraSolitarioRegiao tab reg (x,y) prefiltro
     |lowestLonelyOfRegion reg (x,y) && length prefiltro /= 1 = prefiltro \\ [maximum prefiltro]
-    |highestLonelyOfRegion reg (x,y) && length prefiltro /= 1 = prefiltro \\ [minimum prefiltro]
+   --  |highestLonelyOfRegion reg (x,y) && length prefiltro /= 1 = prefiltro \\ [minimum prefiltro]
     |otherwise = prefiltro
 
 atualizaTabuleiro :: Tabuleiro -> (Int, Int, Int) -> Tabuleiro
@@ -252,7 +313,7 @@ isBlank board row col = board !! row !! col == 0
 preSolucionador :: [(Int,Int)] -> Tabuleiro -> Regiao ->Maybe Tabuleiro
 preSolucionador [] tab _ = Just tab
 preSolucionador ((linha,coluna):resto) tab reg = do
-    let newTab = iteraProcurandoPossibilidade tab reg (reg!!(length reg-1)!!(length reg -1))
+    let newTab = procuraTriviais (iteraProcurandoPossibilidade tab reg (reg!!(length reg-1)!!(length reg -1))) reg $ getZeroCoords tab
     if newTab!!linha!!coluna == 0
         then let valores_possiveis = restricaoPossibilidades newTab reg (linha,coluna) \\ [newTab!!linha!!coluna]
             in if length valores_possiveis == 1 
@@ -275,9 +336,9 @@ getRegiaoSize reg (x,y) = length $ filter (==(reg!!x!!y)) $ concat reg
 main :: IO ()
 main = do
   print "AAA"
-  let tab = tabuleiro1
-  let reg = regioes1
-  print tab
+  let tab = tabuleiro10
+  let reg = regioes10
+  --print tab
 
 
   let x = [(i,j)|i <- [0..length tab -1] , j <- [0..length tab - 1]]
@@ -306,7 +367,7 @@ main = do
   --print $ restricaoPossibilidades a regioes1 (3,0)
   let r = fromJust $ solucionador x tab reg
   print r
-  let s = iteraProcurandoPossibilidade r reg (reg!!(length reg-1)!!(length reg -1))
-  print $ restricaoPossibilidades r reg (1,5)
-  print $ lowestLonelyOfRegion regioes10 (6,5)
+  print $ highestLonelyOfRegion reg (2,0)
+  print $ r!!2!!0
+
   
