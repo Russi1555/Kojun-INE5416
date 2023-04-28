@@ -15,13 +15,15 @@ TABULEIRO10 E REGIOES10 = https://www.janko.at/Raetsel/Kojun/010.a.htm
 
 tabuleiro0::Tabuleiro
 tabuleiro0 = [
-    [1,0],
-    [0,0]]
+    [0,0,0],
+    [2,1,3],
+    [0,0,0]]
 
 regioes0::Regiao
 regioes0= [
-    [1,1],
-    [2,2]]
+    [1,1,1],
+    [2,2,2],
+    [3,3,3]]
 
 tabuleiro01::Tabuleiro
 tabuleiro01= [
@@ -114,8 +116,9 @@ tabuleiro100=
 
 regioes100::Regiao
 regioes100=
-  [[1, 2, 2, 4, 4, 4, 4, 4, 5, 5, 7, 7, 7, 7, 8, 9, 9], 
-  [1, 1, 3, 4, 13, 13, 4, 63, 5, 6, 11, 8, 8, 8, 8, 9, 9], 
+  [
+  [1, 2, 2, 4,  4,  4, 4,  4,    5, 5,  7, 7, 7, 7, 8,     9, 9], 
+  [1, 1, 3, 4, 13, 13, 4, 63,    5, 6, 11, 8, 8, 8, 8,     9, 9], 
   [16, 1, 1, 14, 13, 12, 12, 12, 5, 11, 11, 11, 11, 8, 8, 10, 9], 
   [16, 1, 14, 14, 13, 18, 12, 19, 20, 20, 20, 20, 11, 10, 10, 10, 9], 
   [16, 17, 14, 15, 18, 18, 18, 19, 20, 27, 20, 21, 21, 21, 10, 10, 9], 
@@ -308,8 +311,23 @@ isBlank :: Tabuleiro -> Int -> Int -> Bool
 isBlank board row col = board !! row !! col == 0
 
 --ANOTAÇÕES:: APARENTEMENTE O BACKTRACKING ESTÁ FUNCIONANDO, FALTA ARRUMAR O GETVALORESPOSSIVEIS SÓ
+testaPossibilidades::Tabuleiro->Regiao->(Int,Int)->[Int]->Maybe Tabuleiro
+testaPossibilidades tab _ _ [] = Just tab
+testaPossibilidades tab reg (x,y) (possibilidade:resto) = do
+  let newTab = atualizaTabuleiro tab (x,y,possibilidade)
+  let newZeroCoords = getZeroCoords newTab
+  let num_impossibilidades = length (filter (==[]) $ getAllPossibilidadesVazios newTab reg newZeroCoords [])
+  if num_impossibilidades  > 0
+    then testaPossibilidades tab reg (x,y) resto
+    else 
+      solucionador newZeroCoords newTab reg--testaPossibilidades tab reg (head newZeroCoords) (restricaoPossibilidades tab reg $ head newZeroCoords) 
 
-    
+getAllPossibilidadesVazios::Tabuleiro->Regiao->[(Int,Int)]->[[Int]]->[[Int]]
+getAllPossibilidadesVazios _ _ [] _ = []
+getAllPossibilidadesVazios tab reg (coord:resto) lista_r= do
+   let possibilidades_atual = restricaoPossibilidades tab reg coord
+   lista_r ++ [possibilidades_atual] ++ getAllPossibilidadesVazios tab reg resto []
+
 preSolucionador :: [(Int,Int)] -> Tabuleiro -> Regiao ->Maybe Tabuleiro
 preSolucionador [] tab _ = Just tab
 preSolucionador ((linha,coluna):resto) tab reg = do
@@ -325,8 +343,13 @@ preSolucionador ((linha,coluna):resto) tab reg = do
 solucionador :: [(Int, Int)] -> Tabuleiro -> Regiao -> Maybe Tabuleiro
 solucionador coords tab reg = 
     let newTab = preSolucionador coords tab reg
+        newZeroCoords = getZeroCoords $ fromJust newTab
     in case newTab of
-        Just t -> if t == tab then Just t else solucionador coords t reg
+        Just t -> if t == tab 
+          then if length newZeroCoords /= 0 
+            then testaPossibilidades t reg (head $ getZeroCoords t) $ restricaoPossibilidades t reg (head $ getZeroCoords t) 
+            else Just t
+          else solucionador coords t reg
         Nothing -> Nothing
 
 
@@ -336,38 +359,15 @@ getRegiaoSize reg (x,y) = length $ filter (==(reg!!x!!y)) $ concat reg
 main :: IO ()
 main = do
   print "AAA"
-  let tab = tabuleiro10
-  let reg = regioes10
+  let tab = tabuleiro0
+  let reg = regioes0
   --print tab
 
 
   let x = [(i,j)|i <- [0..length tab -1] , j <- [0..length tab - 1]]
-  --print x
-  --let y = fromJust $ preSolucionador x tabuleiro1 regioes1
-  --print y
-  --let z = fromJust $ preSolucionador x y regioes1
-  --print z
-  --print $ fromJust $ preSolucionador x z regioes1
-  --print $ restricaoVerticalCima z regioes1 (1,4)
-  --print $ restricaoPossibilidades z regioes1 (3,3)
-  --print $ getRegiaoSize  regioes1 (3,3)
-  --print $ restricaoVerticalBaixo z regioes1 (3,3)
-  --print $ lowestLonelyofRegion z regioes1 (3,3) [1,2,3,4,5,6]
-  --print $ findEmptyCells tabuleiro1
-  --print $ getSize regioes1 (0,0)
- -- print $ getAdjacentCells z (3,3)
-  --print $ restricaoPossibilidades tabuleiro1 regioes1 (0,1)
-  --print $ resolveTabuleiro z regioes1
-  --let a = fromJust $ preSolucionador x z regioes1
-  --print a
-  --let b = fromJust $ preSolucionador x a regioes1
-  --print b
-  --let c = fromJust $ preSolucionador x b regioes1
-  --print c
-  --print $ restricaoPossibilidades a regioes1 (3,0)
   let r = fromJust $ solucionador x tab reg
   print r
-  print $ highestLonelyOfRegion reg (2,0)
-  print $ r!!2!!0
+ -- print $ restricaoPossibilidades r reg (6,0)
+  --print $ getAllPossibilidadesVazios r reg (getZeroCoords r) []
 
   
