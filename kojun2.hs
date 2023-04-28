@@ -1,8 +1,5 @@
-import Data.List (find,nub,sortBy,elemIndices,transpose,intersect,findIndex)
-import Data.List ((\\))
+import Data.List (nub, intersect, (\\))
 import Data.Maybe (fromJust)
-import Data.ByteString (count)
-import Distribution.Compat.CharParsing (tab)
 
 
 type Regiao = [[Int]]
