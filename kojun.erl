@@ -162,13 +162,9 @@ filtraSolitarioRegiao(Reg, {X,Y}, Prefiltro) ->
     if 
         Tamanho_Prefiltro > 1 andalso IsLowestLonely ->
             Valor_max = lists:max(Prefiltro),
-            io:format("Valor_max = ~w~n",[Valor_max]),
             lists:subtract(Prefiltro, [Valor_max]);
         Tamanho_Prefiltro > 1 andalso IsHighestLonely ->
             Valor_min = lists:min(Prefiltro),
-            io:format("Coordenada = ~w~n",[{X,Y}]),
-            io:format("Prefiltro = ~w~n",[Prefiltro]),
-            io:format("Valor_min = ~w~n",[Valor_min]),
             lists:subtract(Prefiltro, [Valor_min]);
         true ->
             Prefiltro
@@ -185,8 +181,64 @@ restricaoPossibilidades(Tab, Reg, {X,Y}) ->
     Final.
     %PossibilidadesFiltrada3.
 
-encontraUnicaPossibilidade(Tabuleiro,Possibilidades_Posicoes)->
+encontraUnicaPossibilidade(Tab,Possibilidades_Posicoes)->
     
+    Coords_e_valores_unicos = valoresUnicos(Possibilidades_Posicoes),
+    %io:format("DEBUG 1 ~w~n",[Coords_e_valores_unicos]),
+    if
+        Coords_e_valores_unicos == [] ->
+            Tab;
+        true->
+            atualizaValoresComUnicos(Tab,Coords_e_valores_unicos)
+    end.
+
+iteraProcurandoPossibilidade(Tab,Reg)->
+    Comeco_Count = lists:max(lists:max(Reg)),
+    iteraProcurandoPossibilidade(Tab,Reg,Comeco_Count).
+
+iteraProcurandoPossibilidade(Tab,Reg,Count)->
+    Possibilidades = valoresPossiveisDaRegiao(Tab,Reg,Count),
+    Novo_tab = encontraUnicaPossibilidade(Tab,Possibilidades),
+    if
+        Count==1->
+            Novo_tab;
+        true->
+            iteraProcurandoPossibilidade(Novo_tab,Reg,Count-1)
+    end.
+    
+atualizaValoresComUnicos(Tab,[{{X,Y},Valor} | Resto])->
+    Novo_tab = substitui_valor_matrix(Tab,{X,Y},hd(Valor)),
+    if
+        Resto == [] ->
+            Novo_tab;
+        true->
+            atualizaValoresComUnicos(Novo_tab,Resto)
+    end.
+
+valoresUnicos(Lista_Coords_Poss)->
+    Lista_Possibilidades = lists:flatten([Poss || {_, Poss} <- Lista_Coords_Poss]),
+    Lista_Unicos = 
+        lists:filter(fun(A) -> 
+        length(lists:filter(fun(B) -> B == A end, Lista_Possibilidades)) == 1 end, Lista_Possibilidades),
+    Res = coordsValoresUnicos(Lista_Coords_Poss,Lista_Unicos),
+    %io:format("DEBUG ~w~n",[Res]),
+    Res.
+
+coordsValoresUnicos(Lista_Coords_Poss, Lista_Unicos) ->
+    Lista = lists:map(fun({{X, Y}, List}) ->
+        Unicos = lists:filter(fun(Value) ->
+            lists:member(Value, List)
+        end, Lista_Unicos),
+        if length(Unicos) == 1 ->
+            {{X, Y}, Unicos};
+           true -> {}
+        end
+    end, Lista_Coords_Poss),
+    lists:filter(fun(A)-> A /= {} end, Lista).
+
+    
+    
+
 
 
 valoresPossiveisDaRegiao(Tab,Reg,Reg_id)->
@@ -196,30 +248,36 @@ valoresPossiveisDaRegiao(Tab,Reg,Reg_id)->
     Lista_resultado.
 
 pre_solucionador(Tab, Reg, [{X,Y} | Resto])->
-    Possibilidades = restricaoPossibilidades(Tab,Reg,{X,Y}),
+    io:format("~w~n",[{X,Y}]),
+    Novo_tab1 = iteraProcurandoPossibilidade(Tab,Reg),
+    Possibilidades = restricaoPossibilidades(Novo_tab1,Reg,{X,Y}),
     
     if 
         length(Possibilidades) == 1 ->
-            Novo_Tab = substitui_valor_matrix(Tab,{X,Y},hd(Possibilidades));
+            Novo_Tab2 = substitui_valor_matrix(Novo_tab1,{X,Y},hd(Possibilidades));
         true->
-            Novo_Tab = Tab
+            Novo_Tab2 = Novo_tab1
     end,
     if
         Resto == [] ->
-            Novo_Tab;
+            Novo_Tab2;
         true->            
-            pre_solucionador(Novo_Tab, Reg, Resto)
+            pre_solucionador(Novo_Tab2, Reg, Resto)
     end.
 
 solucionador(Tab,Reg)->
     Coords_zero = get_coords_vazias(Tab),
-    Novo_tab = pre_solucionador(Tab,Reg,Coords_zero),   
     if
-        Novo_tab == Tab ->
-            Novo_tab;
+        length(Coords_zero) == 0 ->
+            Tab;
         true->
-            io:format("Iterou solucionador = ~w~n",[1]),
-            solucionador(Novo_tab,Reg)
+            Novo_tab = pre_solucionador(Tab,Reg,Coords_zero),   
+            if
+                Novo_tab == Tab ->
+                    Novo_tab;
+                true->
+                    solucionador(Novo_tab,Reg)
+            end
     end.
 
 print_matrix(Matrix) ->
@@ -250,16 +308,19 @@ start() ->
 
     Lista = [1,2,3,4],
 
-    Coord = {6,6},
+    Coord = {1,6},
     Coords_zero = get_coords_vazias(Tabuleiro1),
     Size = get_regiao_size(Regioes1, Coord),
     Poss = restricaoPossibilidades(Tabuleiro1, Regioes1, Coord), %restricaoPossibilidades(Tabuleiro1, Regioes1, Coord),
     Teste = restricaoVerticalBaixo(Tabuleiro1,Regioes1,Coord,Poss),
-   % Nova = substitui_valor_lista(Lista,3,99),
+    Nova = valoresPossiveisDaRegiao(Tabuleiro1,Regioes1,1),
     io:format("~p~n",[Tabuleiro1]),
     io:format("~w~n",[Poss]),
     io:format("~w~n",[highestLonelyOfRegion(Regioes1,{1,6})]),
     print_matrix(solucionador(Tabuleiro1,Regioes1)),
-    io:format("~w~n",[valoresPossiveisDaRegiao(Tabuleiro1,Regioes1,10)]).
+    io:format("~w~n",[lists:max(lists:max(Regioes1))]),
+    io:format("~w~n",[valoresUnicos(Nova)]).
+
+
 
     %kojun:start().
