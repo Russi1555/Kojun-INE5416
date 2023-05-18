@@ -236,8 +236,34 @@ coordsValoresUnicos(Lista_Coords_Poss, Lista_Unicos) ->
     end, Lista_Coords_Poss),
     lists:filter(fun(A)-> A /= {} end, Lista).
 
-    
-    
+getAllPossibilidadesVazios(_,_,[],Resultado)->
+    Resultado;
+getAllPossibilidadesVazios(Tab,Reg,[{X,Y} | Resto],Resultado)->
+    Possibilidades_atual= restricaoPossibilidades(Tab,Reg,{X,Y}),
+    Outras_possibilidades = getAllPossibilidadesVazios(Tab,Reg,Resto,Resultado),
+    Resultado ++ [Possibilidades_atual] ++ Outras_possibilidades.
+
+testaPossibilidades(Tab,_,_,[])->
+    Tab;
+testaPossibilidades(Tab,Reg,{X,Y}, [Possibilidade | Resto])->
+    Novo_tab = substitui_valor_matrix(Tab,{X,Y},Possibilidade),
+    Coords_zero = get_coords_vazias(Tab),
+    Poss_vazios = getAllPossibilidadesVazios(Tab,Reg,Coords_zero,[]),
+    Novo_Coords_zero = get_coords_vazias(Novo_tab),
+    Novo_Poss_vazios = getAllPossibilidadesVazios(Novo_tab,Reg,Novo_Coords_zero,[]),
+    Tamanho_Novo_Poss = length(Novo_Poss_vazios),
+    Tamanho_Poss = length(Poss_vazios),
+    if
+        %Se o número de célula com possibilidades diminui em mais de um ao preencher
+        %uma célula, isso significa que o preenchimento desta célula com o valor X
+        %impossibilita que qualquer valor seja inserido em outra célula, ou seja,
+        %X é o valor errado.
+        Tamanho_Novo_Poss < (Tamanho_Poss - 1) ->
+            testaPossibilidades(Tab,Reg,{X,Y},Resto);
+        true ->
+            solucionador(Novo_tab,Reg)
+    end.
+
 
 
 
@@ -248,7 +274,7 @@ valoresPossiveisDaRegiao(Tab,Reg,Reg_id)->
     Lista_resultado.
 
 pre_solucionador(Tab, Reg, [{X,Y} | Resto])->
-    io:format("~w~n",[{X,Y}]),
+    %io:format("~w~n",[{X,Y}]),
     Novo_tab1 = iteraProcurandoPossibilidade(Tab,Reg),
     Possibilidades = restricaoPossibilidades(Novo_tab1,Reg,{X,Y}),
     
@@ -274,7 +300,13 @@ solucionador(Tab,Reg)->
             Novo_tab = pre_solucionador(Tab,Reg,Coords_zero),   
             if
                 Novo_tab == Tab ->
-                    Novo_tab;
+                    Novo_Coords_zero = get_coords_vazias(Novo_tab),
+                    if length(Novo_Coords_zero) == 0 -> %Se o tabuleiro está resolvido, devolve
+                        Novo_tab;
+                        true-> %Caso não esteja resolvido ainda vai chutar valor e tentar de novo
+                            Novo_poss = restricaoPossibilidades(Tab,Reg,hd(Novo_Coords_zero)),
+                            testaPossibilidades(Tab,Reg,hd(Novo_Coords_zero), Novo_poss)
+                    end;
                 true->
                     solucionador(Novo_tab,Reg)
             end
@@ -306,20 +338,42 @@ start() ->
         [8,8,9,10, 10,10],
         [11,11,9,9,10,10]],
 
-    Lista = [1,2,3,4],
+Tabuleiro10 =
+    [[5,0,2,0,2,0,3,1,3,1],
+                        [0,4,0,1,0,5,0,5,0,4],
+                        [7,5,1,7,0,0,3,1,3,0],
+                        [0,4,0,0,0,0,0,0,0,3],
+                        [2,0,3,4,0,2,0,0,4,0],
+                        [5,0,2,0,6,0,0,0,0,0],
+                        [0,1,3,0,1,0,0,4,0,3],
+                        [6,7,0,3,0,1,4,0,0,1],
+                        [4,0,3,0,4,0,0,0,0,3],
+                        [0,1,0,2,0,6,2,0,2,1]],
 
-    Coord = {1,6},
-    Coords_zero = get_coords_vazias(Tabuleiro1),
-    Size = get_regiao_size(Regioes1, Coord),
-    Poss = restricaoPossibilidades(Tabuleiro1, Regioes1, Coord), %restricaoPossibilidades(Tabuleiro1, Regioes1, Coord),
-    Teste = restricaoVerticalBaixo(Tabuleiro1,Regioes1,Coord,Poss),
-    Nova = valoresPossiveisDaRegiao(Tabuleiro1,Regioes1,1),
-    io:format("~p~n",[Tabuleiro1]),
-    io:format("~w~n",[Poss]),
-    io:format("~w~n",[highestLonelyOfRegion(Regioes1,{1,6})]),
-    print_matrix(solucionador(Tabuleiro1,Regioes1)),
-    io:format("~w~n",[lists:max(lists:max(Regioes1))]),
-    io:format("~w~n",[valoresUnicos(Nova)]).
+Regioes10=
+                        [[1,2,2,2,3,3,3,3,4,4],
+                        [1,1,1,2,6,6,7,7,4,7],
+                        [5,5,1,6,6,9,8,7,7,7],
+                        [5,5,6,6,10,9,8,8,8,11],
+                        [5,5,5,6,10,10,30,11,11,11],
+                        [12,12,15,15,15,10,22,22,21,21],
+                        [12,12,12,15,15,16,17,18,21,21],
+                        [13,13,12,15,16,16,17,18,20,20],
+                        [13,13,14,14,14,14,17,18,18,19],
+                        [13,13,13,14,14,14,17,17,19,19]],
+
+Tabuleiro0 = [
+    [0,0,1],
+    [0,1,3],
+    [0,3,0]],
+
+Regioes0= [
+    [1,1,1],
+    [2,2,2],
+    [3,3,3]],
+
+   Coords_zero = get_coords_vazias(Tabuleiro1),
+    print_matrix(solucionador(Tabuleiro0,Regioes0)).
 
 
 
