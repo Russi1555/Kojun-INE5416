@@ -2,80 +2,87 @@
 -module(kojun). 
 -export([start/0]). 
 
+%Função auxiliar a substitiu_valor_matrix. Substitiu o valor na coluna da linha selecionada na função principal
 substitui_valor_lista(Lista,Indice,Valor)->
-    % poderia ter usado isso lists:enumerate(Lista) mas não consegui atualizar meu Erlang
     Lista_enumerada = lists:zip(lists:seq(1,length(Lista)), Lista), 
     [if I == Indice -> Valor; true -> Val end || {I, Val} <- Lista_enumerada].
 
-
+%Recebe a matriz de valores, coordenadas e o valor novo. Seleciona a linha da matriz e passa ela e o valor Y para a função auxiliar executar a substituição real
 substitui_valor_matrix(Tab,{X,Y},Valor_novo)->
     Linha = lists:nth(X,Tab),
     Nova_Linha = substitui_valor_lista(Linha,Y,Valor_novo),
     substitui_valor_lista(Tab,X,Nova_Linha).
 
+%Retorna a quantidade de células com o valor de região presente na coordenada {X,Y}
 get_regiao_size(Reg, {X, Y}) ->
   Value = get_valor_coord(Reg, {X,Y}),
   Count = length([C || R <- Reg, C <- R, C =:= Value]),
   Count.
 
+%Retorna o valor presente na coordenada. Função auxiliar para descobrir números da matriz de valores ou IDs de região na matriz de regiões.
 get_valor_coord(Matrix, {X,Y}) -> 
     lists:nth(Y, lists:nth(X, Matrix)).
 
+%Retorna lista de coordenadas cujo valor na matriz de valores seja igual a 0
 get_coords_vazias(Tab)->
     Lim = length(Tab),
     Coords = [{Row, Col} || Row <- lists:seq(1, Lim), Col <- lists:seq(1, Lim)],
     Coords_zero = lists:filter(fun({X,Y})->get_valor_coord(Tab,{X,Y}) == 0 end, Coords),
     Coords_zero.
 
+%Retorna uma lista de valores já presentes na região
 valoresRegiao(Tab, Reg, R) ->
     Coords = coordsRegiao(Reg, R),
     [lists:nth(J, lists:nth(I, Tab)) || {I,J} <- Coords].
 
+%Retorna a lista de coordenadas que possuem o ID de região informado
 coordsRegiao(Reg, Reg_id) ->
     Rows = length(Reg),
     Cols = length(lists:nth(1, Reg)),
     Coords = [{X,Y} || X <- lists:seq(1, Rows), Y <- lists:seq(1, Cols)],
     lists:filter(fun({X,Y}) -> get_valor_coord(Reg, {X,Y}) == Reg_id end, Coords).
 
+%Retorna uma lista de valores adjacentes da coordenada informada.
 getAdjacentCells(Tab,{X,Y}) -> 
     Coord_Up = {X-1,Y},
     Coord_Down = {X+1,Y},
     Coord_Left = {X,Y-1},
     Coord_Right = {X,Y+1},
     if
-        (X>1)-> 
+        (X>1)->
             Up = get_valor_coord(Tab,Coord_Up);
-        true->
+        true-> %tratamento de coordenada localizada em borda superior da matriz
             Up = 0
     end,
 
     if
         (X < length(Tab))->
             Down = get_valor_coord(Tab,Coord_Down);
-        true->
+        true-> %tratamento de coordenada localizada em borda inferior da matriz
             Down = 0
     end,
 
     if 
         (Y < length(Tab))->
             Right = get_valor_coord(Tab,Coord_Right);
-        true->
+        true-> %tratamento de coordenada localizada em borda direita da matriz
             Right = 0
     end,
 
     if 
         (Y>1)->
             Left = get_valor_coord(Tab, Coord_Left);
-        true->
-            Left = 0
+        true-> %tratamento de coordenada localizada em borda esquerda da matriz
+            Left = 0 
     end,
 
     Resultado = [Up,Down,Left,Right],
     Resultado.
 
+%Filtra lista de forma a só possuir valores maiores que o valor da célula abaixo da coordenada informada.
 restricaoVerticalCima(Tab,Reg,{X,Y},Prefiltro)->
     if 
-        (X == length(Tab))->
+        (X == length(Tab))-> %tratamento borda inferior (não está acima de ninguém)
             Resultado = Prefiltro;
         true->
             Coord_Down = {X+1,Y},
@@ -91,9 +98,10 @@ restricaoVerticalCima(Tab,Reg,{X,Y},Prefiltro)->
     end,
     Resultado.
 
+%Filtra lista de forma a só possuir valores menores que o valor da célula acima da coordenada informada.
 restricaoVerticalBaixo(Tab,Reg,{X,Y},Prefiltro)->
     if 
-        (X == 1)->
+        (X == 1)-> %tratamento de borda superior (não está abaixo de ninguém)
             Resultado = Prefiltro;
         true->
             Coord_Up = {X-1,Y},
@@ -109,10 +117,13 @@ restricaoVerticalBaixo(Tab,Reg,{X,Y},Prefiltro)->
     end,
     Resultado.
 
+%Função unificadora para evitar ter que fazer duas chamadas na função restricoesPossibilidades.
 filtraRestricoesVerticals(Tab,Reg,{X,Y},Prefiltro)->
     FiltradoVertical1 = restricaoVerticalCima(Tab,Reg,{X,Y},Prefiltro),
     restricaoVerticalBaixo(Tab,Reg,{X,Y},FiltradoVertical1).
 
+%Caso a célula esteja localizada na posição mais baixa de sua região (lowest) e não possua vizinhos horizontais da mesma região (lonely)
+%Retorna True
 lowestLonelyOfRegion(Reg,{X,Y})->
     Regiao_id = get_valor_coord(Reg,{X,Y}),
     if
@@ -124,9 +135,6 @@ lowestLonelyOfRegion(Reg,{X,Y})->
     end, 
     Linha = lists:nth(X,Reg),
     Num_mesma_regiao_linha = length(lists:filter(fun(A)-> A==Regiao_id end, Linha)),
-   % io:format("NUM_MESMA = ~w~n", [Num_mesma_regiao_linha]),
-   % io:format("Regiao_id = ~w~n",[Regiao_id]),
-   % io:format("Regiao_id_abaixo = ~w~n",[Regiao_id_abaixo]),
     if
         (Num_mesma_regiao_linha == 1 andalso Regiao_id /= Regiao_id_abaixo) ->
             true;
@@ -134,6 +142,8 @@ lowestLonelyOfRegion(Reg,{X,Y})->
             false
     end.
 
+%Caso a célula esteja localiza na posição mais alta de sua região (highest) e não possua vizinhos horizontais da mesma região (lonely)
+%Retorna True
 highestLonelyOfRegion(Reg,{X,Y})->
     Regiao_id = get_valor_coord(Reg,{X,Y}),
     if
@@ -145,9 +155,6 @@ highestLonelyOfRegion(Reg,{X,Y})->
     end, 
     Linha = lists:nth(X,Reg),
     Num_mesma_regiao_linha = length(lists:filter(fun(A)-> A==Regiao_id end, Linha)),
-   % io:format("NUM_MESMA = ~w~n", [Num_mesma_regiao_linha]),
-   % io:format("Regiao_id = ~w~n",[Regiao_id]),
-   % io:format("Regiao_id_abaixo = ~w~n",[Regiao_id_abaixo]),
     if
         (Num_mesma_regiao_linha == 1 andalso Regiao_id /= Regiao_id_acima) ->
             true;
@@ -155,36 +162,35 @@ highestLonelyOfRegion(Reg,{X,Y})->
             false
     end.
 
+%De acordo com o resultado dos Lonely's realiza a filtragem adequada CASO a lista de possibilidades seja maior que 1.
 filtraSolitarioRegiao(Reg, {X,Y}, Prefiltro) ->
     Tamanho_Prefiltro = length(Prefiltro),
     IsLowestLonely = lowestLonelyOfRegion(Reg,{X,Y}),
     IsHighestLonely = highestLonelyOfRegion(Reg,{X,Y}),
     if 
-        Tamanho_Prefiltro > 1 andalso IsLowestLonely ->
-            Valor_max = lists:max(Prefiltro),
-            lists:subtract(Prefiltro, [Valor_max]);
-        Tamanho_Prefiltro > 1 andalso IsHighestLonely ->
+        Tamanho_Prefiltro > 1 andalso IsLowestLonely -> %caso seja o LowestLonely da região
+            Valor_max = lists:max(Prefiltro), 
+            lists:subtract(Prefiltro, [Valor_max]); %Remove o maior valor da lista de possibilidades, pois a célula mais baixa não pode possuir o maior valor.
+        Tamanho_Prefiltro > 1 andalso IsHighestLonely -> %caso seja o HighestLonely da região
             Valor_min = lists:min(Prefiltro),
-            lists:subtract(Prefiltro, [Valor_min]);
+            lists:subtract(Prefiltro, [Valor_min]);% Remove o menor valor da lista de possibilidades, pois a célula mais alta não pode possuir o menor valor.
         true ->
-            Prefiltro
+            Prefiltro %Caso não seja um Lonely ou só possua uma possibilidade, não aplica nenhum filtro.
     end.
 
+%Retorna uma lista de todas as possibilidades para uma dada coordenada.
 restricaoPossibilidades(Tab, Reg, {X,Y}) ->
     Reg_id = get_valor_coord(Reg,{X,Y}),
-    PossibilidadesBasicas = lists:seq(1, get_regiao_size(Reg, {X,Y})),
-    PossibilidadesFiltrada1 = lists:subtract(PossibilidadesBasicas, valoresRegiao(Tab, Reg,Reg_id)),
-    PossibilidadesFiltrada2 = lists:subtract(PossibilidadesFiltrada1, getAdjacentCells(Tab,{X,Y})),
-    PossibilidadesFiltrada3 = filtraRestricoesVerticals(Tab,Reg,{X,Y},PossibilidadesFiltrada2),
-    Final = filtraSolitarioRegiao(Reg,{X,Y},PossibilidadesFiltrada3),
-    %io:format("Debug 1 = ~w~n",[Final]),
+    PossibilidadesBasicas = lists:seq(1, get_regiao_size(Reg, {X,Y})), %Lista de possibilidades inicia como uma lista com todos os numeros de 1 até (tamanho da região)
+    PossibilidadesFiltrada1 = lists:subtract(PossibilidadesBasicas, valoresRegiao(Tab, Reg,Reg_id)), %São removidos da lista os valores já presentes na região
+    PossibilidadesFiltrada2 = lists:subtract(PossibilidadesFiltrada1, getAdjacentCells(Tab,{X,Y})), %São removidos da lista valores presentes em células adjacentes
+    PossibilidadesFiltrada3 = filtraRestricoesVerticals(Tab,Reg,{X,Y},PossibilidadesFiltrada2), %Valores são removidos da lista de acordo com as restrições verticais (maior que inferior, menor que superior)
+    Final = filtraSolitarioRegiao(Reg,{X,Y},PossibilidadesFiltrada3), %Valores são removidos da lista de acordo com os resultados dos Lonelys.
     Final.
-    %PossibilidadesFiltrada3.
 
+%Chama valoresUnicos e realiza a atualização da matriz de valores caso existam valoresUnicos.
 encontraUnicaPossibilidade(Tab,Possibilidades_Posicoes)->
-    
     Coords_e_valores_unicos = valoresUnicos(Possibilidades_Posicoes),
-    %io:format("DEBUG 1 ~w~n",[Coords_e_valores_unicos]),
     if
         Coords_e_valores_unicos == [] ->
             Tab;
@@ -192,38 +198,43 @@ encontraUnicaPossibilidade(Tab,Possibilidades_Posicoes)->
             atualizaValoresComUnicos(Tab,Coords_e_valores_unicos)
     end.
 
+%Função chamada pelo pre-solucionador. Se encarrega de inicializar o contador da chamada recursiva com o maior valor de ID de região.
 iteraProcurandoPossibilidade(Tab,Reg)->
     Comeco_Count = lists:max(lists:max(Reg)),
     iteraProcurandoPossibilidade(Tab,Reg,Comeco_Count).
 
-iteraProcurandoPossibilidade(Tab,Reg,Count)->
-    Possibilidades = valoresPossiveisDaRegiao(Tab,Reg,Count),
-    Novo_tab = encontraUnicaPossibilidade(Tab,Possibilidades),
+%Vasculha o tabuleiro em busca de algum valor que só aparece em um lugar da região. Por exemplo:
+iteraProcurandoPossibilidade(Tab,Reg,Count)-> %Matriz de valores, matriz de regiões, ID da região.
+    Possibilidades = valoresPossiveisDaRegiao(Tab,Reg,Count), %Digamos que a lista de valores possiveis da região retornou [[1,2],[1,2,3],[1,3],[2,3,4]]
+    Novo_tab = encontraUnicaPossibilidade(Tab,Possibilidades), %Ele encontrará que o valor 4 só ocorre em uma das possibilidades da região, então é inserido lá.
     if
-        Count==1->
-            Novo_tab;
-        true->
-            iteraProcurandoPossibilidade(Novo_tab,Reg,Count-1)
+        Count==1-> %quando chega no final da chamda recursiva (Count ==1)
+            Novo_tab; %retorna o Novo_tab
+        true-> %caso contrário
+            iteraProcurandoPossibilidade(Novo_tab,Reg,Count-1) %procura outro valor na próxima região (de ID mais alto para o mais baixo)
     end.
-    
+
+%função auxiliar e recursiva para atualizar a tabela com valores unicos.
 atualizaValoresComUnicos(Tab,[{{X,Y},Valor} | Resto])->
     Novo_tab = substitui_valor_matrix(Tab,{X,Y},hd(Valor)),
     if
-        Resto == [] ->
+        Resto == [] -> %indica fim das chamadas recursivas / chegou no final da lista.
             Novo_tab;
         true->
             atualizaValoresComUnicos(Novo_tab,Resto)
     end.
 
+%Verifica se na lista de tuplas coordendas,possibilidades existe algum valor de possibilidade que só apareça em uma coordenada e retornará as coordenadas que possuem valores unicos.
+%ex: [((1,0),[1,2]),((1,1),[1,3]),((1,2),[1,2]) retorna [(1,1),3]
 valoresUnicos(Lista_Coords_Poss)->
     Lista_Possibilidades = lists:flatten([Poss || {_, Poss} <- Lista_Coords_Poss]),
     Lista_Unicos = 
         lists:filter(fun(A) -> 
         length(lists:filter(fun(B) -> B == A end, Lista_Possibilidades)) == 1 end, Lista_Possibilidades),
     Res = coordsValoresUnicos(Lista_Coords_Poss,Lista_Unicos),
-    %io:format("DEBUG ~w~n",[Res]),
     Res.
 
+%função auxiliar à valoresUnicos.
 coordsValoresUnicos(Lista_Coords_Poss, Lista_Unicos) ->
     Lista = lists:map(fun({{X, Y}, List}) ->
         Unicos = lists:filter(fun(Value) ->
@@ -236,71 +247,73 @@ coordsValoresUnicos(Lista_Coords_Poss, Lista_Unicos) ->
     end, Lista_Coords_Poss),
     lists:filter(fun(A)-> A /= {} end, Lista).
 
-getAllPossibilidadesVazios(_,_,[],Resultado)->
+%Recebe uma lista com todas as coordenadas com valor == 0 e retorna uma matriz de possibilidades onde cada linha é a possibilidade de uma das coordenadas.
+getAllPossibilidadesVazios(_,_,[],Resultado)->%indica fim da chamada recursiva / final da lista de coordenadas
     Resultado;
 getAllPossibilidadesVazios(Tab,Reg,[{X,Y} | Resto],Resultado)->
     Possibilidades_atual= restricaoPossibilidades(Tab,Reg,{X,Y}),
     Outras_possibilidades = getAllPossibilidadesVazios(Tab,Reg,Resto,Resultado),
     Resultado ++ [Possibilidades_atual] ++ Outras_possibilidades.
 
-testaPossibilidades(Tab,_,_,[])->
+%função principal do Backtracking.
+testaPossibilidades(Tab,_,_,[])->%final da chamada recursiva / fim da lista de possibilidades
     Tab;
 testaPossibilidades(Tab,Reg,{X,Y}, [Possibilidade | Resto])->
-    Novo_tab = substitui_valor_matrix(Tab,{X,Y},Possibilidade),
-    Coords_zero = get_coords_vazias(Tab),
-    Poss_vazios = getAllPossibilidadesVazios(Tab,Reg,Coords_zero,[]),
-    Novo_Coords_zero = get_coords_vazias(Novo_tab),
-    Novo_Poss_vazios = getAllPossibilidadesVazios(Novo_tab,Reg,Novo_Coords_zero,[]),
-    Tamanho_Novo_Poss = length(Novo_Poss_vazios),
-    Tamanho_Poss = length(Poss_vazios),
+    Novo_tab = substitui_valor_matrix(Tab,{X,Y},Possibilidade), %cria uma matriz de valores com uma possibilidade 'chutada'
+    Coords_zero = get_coords_vazias(Tab), %coordenadas vazias da matriz de valores original
+    Poss_vazios = getAllPossibilidadesVazios(Tab,Reg,Coords_zero,[]), %possibilidades das coordenadas vazias da matriz de valores original
+    Novo_Coords_zero = get_coords_vazias(Novo_tab), %coordenadas vazias da nova matriz
+    Novo_Poss_vazios = getAllPossibilidadesVazios(Novo_tab,Reg,Novo_Coords_zero,[]), %possibilidades das coordenadas vazias da nova matriz
+    Tamanho_Novo_Poss = length(Novo_Poss_vazios), %numero de linhas na matriz de possibilidades nova
+    Tamanho_Poss = length(Poss_vazios), %numero de linhas na matriz de possibilidades antiga
     if
         %Se o número de célula com possibilidades diminui em mais de um ao preencher
         %uma célula, isso significa que o preenchimento desta célula com o valor X
         %impossibilita que qualquer valor seja inserido em outra célula, ou seja,
         %X é o valor errado.
         Tamanho_Novo_Poss < (Tamanho_Poss - 1) ->
-            testaPossibilidades(Tab,Reg,{X,Y},Resto);
+            testaPossibilidades(Tab,Reg,{X,Y},Resto); %chuta o proximo numero na lista de possibilidades da coordenada
         true ->
-            solucionador(Novo_tab,Reg)
+            solucionador(Novo_tab,Reg) %Retorna ao solucionador com a matriz com valor chutado.
     end.
 
 
-
-
+%Retorna uma lista de tuplas de coordenadas e valores possiveis para dadas coordenadas de uma região
 valoresPossiveisDaRegiao(Tab,Reg,Reg_id)->
     Coords = coordsRegiao(Reg,Reg_id),
     Coords_zeros = lists:filter(fun({X,Y})-> get_valor_coord(Tab, {X,Y}) == 0 end, Coords),
     Lista_resultado = [{Coordenada,restricaoPossibilidades(Tab,Reg,Coordenada)} || Coordenada <- Coords_zeros],
     Lista_resultado.
 
+%Função auxiliar de solucionador. Aplica todas as regras e deduções implementadas
 pre_solucionador(Tab, Reg, [{X,Y} | Resto])->
-    %io:format("~w~n",[{X,Y}]),
-    Novo_tab1 = iteraProcurandoPossibilidade(Tab,Reg),
-    Possibilidades = restricaoPossibilidades(Novo_tab1,Reg,{X,Y}),
+    Novo_tab1 = iteraProcurandoPossibilidade(Tab,Reg), %Cria um novo tabuleiro com valores unicos (caso não existam nenhum, irá retornar o mesmo tabuleiro que o informado)
+    Possibilidades = restricaoPossibilidades(Novo_tab1,Reg,{X,Y}), %retorna lista de possibilidades da coordenada
     
     if 
-        length(Possibilidades) == 1 ->
-            Novo_Tab2 = substitui_valor_matrix(Novo_tab1,{X,Y},hd(Possibilidades));
+        length(Possibilidades) == 1 -> %Caso só exista uma possibilidade para dada possibilidade
+            Novo_Tab2 = substitui_valor_matrix(Novo_tab1,{X,Y},hd(Possibilidades)); %Insere o valor na matriz
         true->
             Novo_Tab2 = Novo_tab1
     end,
     if
-        Resto == [] ->
-            Novo_Tab2;
+        Resto == [] -> %Caso tenha chegado ao final da lista de coordendas informada
+            Novo_Tab2; %retorna o tabuleiro
         true->            
-            pre_solucionador(Novo_Tab2, Reg, Resto)
+            pre_solucionador(Novo_Tab2, Reg, Resto)%chamada recursiva de pre_solucionador.
     end.
 
+%Função principal para solucionar o tabuleiro
 solucionador(Tab,Reg)->
-    Coords_zero = get_coords_vazias(Tab),
+    Coords_zero = get_coords_vazias(Tab), %Pega a lista de coordenadas com valor 0 na matriz de valores
     if
-        length(Coords_zero) == 0 ->
+        length(Coords_zero) == 0 -> %caso não existam mais valores 0 o tabuleiro foi resolvido e o retorna
             Tab;
         true->
-            Novo_tab = pre_solucionador(Tab,Reg,Coords_zero),   
+            Novo_tab = pre_solucionador(Tab,Reg,Coords_zero), %chama pre_solucionador   
             if
-                Novo_tab == Tab ->
-                    Novo_Coords_zero = get_coords_vazias(Novo_tab),
+                Novo_tab == Tab -> %caso a aplicação de pre_solucionador não tenha resultado em mudanças:
+                    Novo_Coords_zero = get_coords_vazias(Novo_tab), %pega as novas coordenadas com valor 0
                     if length(Novo_Coords_zero) == 0 -> %Se o tabuleiro está resolvido, devolve
                         Novo_tab;
                         true-> %Caso não esteja resolvido ainda vai chutar valor e tentar de novo
@@ -312,16 +325,44 @@ solucionador(Tab,Reg)->
             end
     end.
 
+%função para printar a matriz final
 print_matrix(Matrix) ->
-    lists:foreach(
-        fun(Row) -> 
-            io:format("~p~n", [Row])
-        end,
-        Matrix
-    ).
+    Num_zeros = length(get_coords_vazias(Matrix)),
+    if 
+        Num_zeros > 0 ->
+            io:format("TABULEIRO MAL FORMULADO. N° SOLUCOES /= 1 ");
+        true->
+        lists:foreach(
+            fun(Row) -> 
+                io:format("~p~n", [Row])
+            end,
+            Matrix
+        )
+    end.
 
 
 start() -> 
+
+    Tabuleiro_sem_solucao = [
+        [1,0,1],
+        [2,1,2],
+        [3,0,3]],
+    
+    Regioes_sem_solucao = [
+        [1,2,3],
+        [1,4,3],
+        [1,5,3]],
+
+    Tabuleiro0 = [
+        [0,0,1],
+        [0,1,3],
+        [0,3,0]],
+
+    Regioes0= [
+        [1,1,1],
+        [2,2,2],
+        [3,3,3]],
+
     Tabuleiro1=[
         [2,0,0,0,1,0],
         [0,0,0,3,0,0],
@@ -339,7 +380,7 @@ start() ->
         [11,11,9,9,10,10]],
 
 Tabuleiro10 =
-    [[5,0,2,0,2,0,3,1,3,1],
+                        [[5,0,2,0,2,0,3,1,3,1],
                         [0,4,0,1,0,5,0,5,0,4],
                         [7,5,1,7,0,0,3,1,3,0],
                         [0,4,0,0,0,0,0,0,0,3],
@@ -362,19 +403,10 @@ Regioes10=
                         [13,13,14,14,14,14,17,18,18,19],
                         [13,13,13,14,14,14,17,17,19,19]],
 
-Tabuleiro0 = [
-    [0,0,1],
-    [0,1,3],
-    [0,3,0]],
 
-Regioes0= [
-    [1,1,1],
-    [2,2,2],
-    [3,3,3]],
-
-   Coords_zero = get_coords_vazias(Tabuleiro1),
-    print_matrix(solucionador(Tabuleiro0,Regioes0)).
+    print_matrix(solucionador(Tabuleiro10,Regioes10)).
 
 
-
+    %erlc kojun.erl
+    %erl
     %kojun:start().
