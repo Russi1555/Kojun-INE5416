@@ -1,6 +1,14 @@
 :- use_module(library(clpfd)).
 
+%tabuleiro com 2+ soluções: retorna uma solução apenas.
+tabuleiro(-1, [[(00-_),(00-_)],
+               [(01-_),(01-_)]]).
 
+%tabuleiro sem solução/inválido: retorna falso
+tabuleiro(0,[[(00-1),(00-1)]
+             [(01-_),(01-2)]]).
+
+%https://www.janko.at/Raetsel/Kojun/001.a.htm
 tabuleiro(1, [[(00-2),(00-_),(01-_),(01-_),(01-1),(02-_)],
                [(03-_),(03-_),(03-_),(03-3),(03-_),(02-_)],
                [(04-_),(05-3),(05-_),(05-_),(03-5),(06-3)],
@@ -8,7 +16,8 @@ tabuleiro(1, [[(00-2),(00-_),(01-_),(01-_),(01-1),(02-_)],
                [(07-_),(07-_),(08-3),(09-_),(09-4),(09-2)],
                [(10-_),(10-_),(08-_),(08-_),(09-_),(09-_)]]).
 
-tabuleiro(2, [ [(00-5), (01-_), (01-2), (01-_), (02-2), (02-_), (02-3), (02-1), (03-3), (03-1)],
+%https://www.janko.at/Raetsel/Kojun/010.a.htm
+tabuleiro(10, [ [(00-5), (01-_), (01-2), (01-_), (02-2), (02-_), (02-3), (02-1), (03-3), (03-1)],
                [(00-_), (00-4), (00-_), (01-1), (04-_), (04-5), (05-_), (05-5), (03-_), (05-4)],
                [(06-7), (06-5), (00-1), (04-7), (04-_), (07-_), (08-3), (05-1), (05-3), (05-_)],
                [(06-_), (06-4), (04-_), (04-_), (09-_), (07-_), (08-_), (08-_), (08-_), (10-3)],
@@ -68,14 +77,14 @@ get_valores([H|T], [H2|T2]) :-  %H = tupla atual, T = cauda da lista, H2 = lista
     get_valores(T, T2). %chamada recursiva de get_valores
 
 chutes(Linhas) :-
-    get_valores(Linhas, Values), %pega a lista de valores
+    get_valores(Linhas, Valores), %pega a lista de valores
     %aplica o predicado imbutido "label" na lista de valores. atribui uma solução válida para cada valor vazio da lista
     %de acordo com as restrições estabelecidas anteriormente.
-    maplist(label, Values).
+    maplist(label, Valores).
 
 printa_tabuleiro(Linhas) :- 
-    get_valores(Linhas, Values), 
-    maplist(portray_clause, Values).
+    get_valores(Linhas, Valores), 
+    maplist(portray_clause, Valores).
 
 kojun(Linhas) :-
     maplist(limites(Linhas), Linhas),
@@ -86,7 +95,7 @@ kojun(Linhas) :-
     maplist(check_regra_vertical, Colunas).
 
 resolve(N) :-
-    tabuleiro(N,Tab),
-    kojun(Tab),
-    chutes(Tab),
-    printa_tabuleiro(Tab).
+    tabuleiro(N,Tab), %Escolhe o tabuleiro
+    kojun(Tab), %Estabelece regras
+    chutes(Tab), %Chuta valores/backtracking
+    printa_tabuleiro(Tab). %exibe o tabuleiro resolvido.
