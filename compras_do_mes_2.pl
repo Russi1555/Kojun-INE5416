@@ -117,10 +117,6 @@ solucao(Solucao) :-
     
     %Aline está ao lado da mulher que foi ao supermercado com o filho
     aoLado(caixa(_,aline,_,_,_,_),caixa(_,_,_,_,filho,_), Solucao),
- 
-    
-    
-    
     
     %A mulher que vai pagar com o cartão de Débito está exatamente à esquerda de quem vai pagar com Vale.
     aoLadoAEsquerda(caixa(_,_,_,debito,_,_), caixa(_,_,_,vale,_,_), Solucao),
@@ -131,48 +127,26 @@ solucao(Solucao) :-
     %Quem esqueceu o Presunto vai pagar com o cartão de Débito.
     member(caixa(_,_,presunto,debito,_,_),Solucao),
     
-    
     %Quem esqueceu o Pão foi ao supermercado dirigindo um SUV.
     member(caixa(_,_,pao,_,_,suv), Solucao),
     
     %Fernanda foi para o supermercado com o Filho.
     member(caixa(_,fernanda,_,_,filho,_),Solucao),
     
-
-    blusa(Blusa1),blusa(Blusa2),blusa(Blusa3),blusa(Blusa4),blusa(Blusa5),
+    blusa(Blusa1), blusa(Blusa2), blusa(Blusa3), blusa(Blusa4), blusa(Blusa5),
 	todosDiferentes([Blusa1,Blusa2,Blusa3,Blusa4,Blusa5]),
 
-	nome(Nome1),
-	nome(Nome2),
-	nome(Nome3),
-	nome(Nome4),
-	nome(Nome5),
+	nome(Nome1), nome(Nome2), nome(Nome3), nome(Nome4), nome(Nome5),
 	todosDiferentes([Nome1,Nome2,Nome3,Nome4,Nome5]),
 
-	esqueceu(Esqueceu1),
-	esqueceu(Esqueceu2),
-	esqueceu(Esqueceu3),
-	esqueceu(Esqueceu4),
-	esqueceu(Esqueceu5),
+	esqueceu(Esqueceu1), esqueceu(Esqueceu2), esqueceu(Esqueceu3), esqueceu(Esqueceu4), esqueceu(Esqueceu5),
 	todosDiferentes([Esqueceu1,Esqueceu2,Esqueceu3,Esqueceu4,Esqueceu5]),
     
-	pagamento(Pagamento1),
-	pagamento(Pagamento2),
-	pagamento(Pagamento3),
-	pagamento(Pagamento4),
-	pagamento(Pagamento5),
+	pagamento(Pagamento1), pagamento(Pagamento2), pagamento(Pagamento3), pagamento(Pagamento4), pagamento(Pagamento5),
 	todosDiferentes([Pagamento1,Pagamento2,Pagamento3,Pagamento4,Pagamento5]),
     
-	foi_com(Foi_com1),
-	foi_com(Foi_com2),
-	foi_com(Foi_com3),
-	foi_com(Foi_com4),
-	foi_com(Foi_com5),
+	foi_com(Foi_com1), foi_com(Foi_com2), foi_com(Foi_com3), foi_com(Foi_com4), foi_com(Foi_com5),
 	todosDiferentes([Foi_com1,Foi_com2,Foi_com3,Foi_com4,Foi_com5]),
     
-    carro(Carro1),
-	carro(Carro2),
-	carro(Carro3),
-	carro(Carro4),
-	carro(Carro5),
+    carro(Carro1), carro(Carro2), carro(Carro3), carro(Carro4), carro(Carro5),
 	todosDiferentes([Carro1,Carro2,Carro3,Carro4,Carro5]).
