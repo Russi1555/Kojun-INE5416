@@ -1,3 +1,5 @@
+%https://rachacuca.com.br/logica/problemas/compras-do-mes-ii/#gsc.tab=0
+
 blusa(amarela).
 blusa(azul).
 blusa(branca).
@@ -136,14 +138,7 @@ solucao(Solucao) :-
     %Fernanda foi para o supermercado com o Filho.
     member(caixa(_,fernanda,_,_,filho,_),Solucao),
     
-    
-    
-    
-    
-   
-    
-    
-    
+
     blusa(Blusa1),blusa(Blusa2),blusa(Blusa3),blusa(Blusa4),blusa(Blusa5),
 	todosDiferentes([Blusa1,Blusa2,Blusa3,Blusa4,Blusa5]),
 
