@@ -39,7 +39,6 @@ carro(suv). %sem letra maiuscula
 todosDiferentes([]).
 todosDiferentes([H|T]) :- not(member(H,T)), todosDiferentes(T).
 
-
 aEsquerda(X,Y,Lista) :- 
     nth0(IndexX,Lista,X), 
     nth0(IndexY,Lista,Y),
@@ -53,15 +52,14 @@ aoLado(X,Y,Lista) :-
 
 noCanto(X,Lista) :- last(Lista,X).
 noCanto(X,[X|_]).
-%caixa(blusa,nome,esqueceu,pagamento,foi_com,carro)
 
-noCantoAoLadoDe(X,Y,Lista) :-noCanto(X,Lista),aoLado(X,Y,Lista).
+noCantoAoLadoDe(X,Y,Lista) :-noCanto(X,Lista),aoLado(X,Y,Lista). %X no canto exatamente ao lado de Y
 
-entre(X,Y,Z,Lista) :- aDireita(X,Y,Lista),aEsquerda(X,Z,Lista).
+entre(X,Y,Z,Lista) :- aDireita(X,Y,Lista),aEsquerda(X,Z,Lista). % Y < X < Z
 
-aoLadoAEsquerda(X,Y,Lista) :- aoLado(X,Y,Lista), aEsquerda(X,Y,Lista).
+aoLadoAEsquerda(X,Y,Lista) :- aoLado(X,Y,Lista), aEsquerda(X,Y,Lista). %exatamente a esquerda
 
-aoLadoADireita(X,Y,Lista) :- aoLado(X,Y,Lista), aDireita(X,Y,Lista).
+aoLadoADireita(X,Y,Lista) :- aoLado(X,Y,Lista), aDireita(X,Y,Lista). %exatamente a direita
 
 solucao(Solucao) :- 
     Solucao = [
