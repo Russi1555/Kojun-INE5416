@@ -36,7 +36,10 @@ carro(suv). %sem letra maiuscula
 
 todosDiferentes([]).
 todosDiferentes([H|T]) :- not(member(H,T)), todosDiferentes(T).
-
+exatamenteEsquerda(X,Y,Lista) :-
+    nth0(IndexX,Lista,X), 
+    nth0(IndexY,Lista,Y),
+	IndexX == IndexY-1.
 
 aEsquerda(X,Y,Lista) :- 
     nth0(IndexX,Lista,X), 
